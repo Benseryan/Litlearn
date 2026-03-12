@@ -13,6 +13,7 @@ import GenreFilter from '@/components/tree/GenreFilter';
 import { getGenre } from '@/components/tree/genreConfig';
 import DuoButton from '@/components/ui/DuoButton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import BottomNav from '@/components/navigation/BottomNav';
 
 const VIEWS = [{ id: 'overview', label: 'Overview' }, { id: 'path', label: 'Path' }];
 
@@ -170,6 +171,8 @@ export default function LearningTree() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <BottomNav currentPage="LearningTree" />
     </div>
   );
 }
