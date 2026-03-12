@@ -14,7 +14,8 @@ const tabs = [
 
 export default function BottomNav({ currentPage }) {
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pb-5 px-4">
+    <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center px-4"
+      style={{ paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom))' }}>
       <nav className="flex items-center justify-around gap-1 bg-sage rounded-full px-3 py-2 w-full max-w-md"
         style={{ boxShadow: '0 4px 24px rgba(90,92,65,0.18)' }}>
         {tabs.map((tab) => {
