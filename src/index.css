@@ -1,0 +1,38 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-inter: 'Inter', sans-serif;
+    --background: 43 30% 89%;
+    --foreground: 63 30% 20%;
+    --card: 43 25% 85%;
+    --card-foreground: 63 30% 20%;
+    --popover: 43 30% 89%;
+    --popover-foreground: 63 30% 20%;
+    --primary: 63 30% 20%;
+    --primary-foreground: 43 20% 94%;
+    --secondary: 65 17% 30%;
+    --secondary-foreground: 43 20% 94%;
+    --muted: 40 15% 78%;
+    --muted-foreground: 63 15% 35%;
+    --accent: 75 25% 62%;
+    --accent-foreground: 63 30% 20%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 40 15% 75%;
+    --input: 40 15% 75%;
+    --ring: 75 25% 62%;
+    --radius: 1rem;
+  }
+
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground font-inter; }
+
+  /* Hide scrollbar utility */
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+}
