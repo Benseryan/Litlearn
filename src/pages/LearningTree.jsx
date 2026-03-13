@@ -11,6 +11,7 @@ import { LearningNode, UserProgress } from '@/api/supabase';
 import { createPageUrl } from '@/utils';
 import GenreFilter from '@/components/tree/GenreFilter';
 import TreeBackground from '@/components/tree/TreeBackground';
+import { buildTreeLayout, NODE_GAP, W } from '@/components/tree/treeLayout';
 import { getGenre } from '@/components/tree/genreConfig';
 import BottomNav from '@/components/navigation/BottomNav';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -22,94 +23,106 @@ const ICON_MAP = {
   'book-marked': BookMarked, 'globe': Globe,
 };
 
-// Nodes zigzag along the trunk — alternates left/right to sit on branches
-const BRANCH_OFFSETS = [0, -88, 88, -72, 72, -80, 80, -68, 68, -76, 0, 76];
+const TREE_TOP_PAD = 160;
 
-const NODE_VERTICAL_GAP = 160;
-const TREE_TOP_PAD      = 140;
+// ─── Lesson node — sits ON the leaf ──────────────────────────
+function LessonNode({ node, status, score, slot, index, onClick }) {
+  const Icon       = ICON_MAP[node.icon] || BookOpen;
+  const genre      = getGenre(node.genre || 'classics');
+  const isLocked   = status === 'locked';
+  const isComplete = status === 'completed';
+  const isActive   = status === 'available' || status === 'in_progress';
 
-// ─── Individual lesson node ───────────────────────────────────
-function LessonNode({ node, status, score, index, onClick, totalNodes }) {
-  const Icon         = ICON_MAP[node.icon] || BookOpen;
-  const genre        = getGenre(node.genre || 'classics');
-  const isLocked     = status === 'locked';
-  const isComplete   = status === 'completed';
-  const isActive     = status === 'available' || status === 'in_progress';
-  const xOffset = BRANCH_OFFSETS[index % BRANCH_OFFSETS.length];
+  // Convert SVG coordinates to CSS percent positions
+  // slot.x / W gives us the fraction across the 400px viewBox
+  const leftPct = (slot.x / W) * 100;
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.5 }}
+      initial={{ opacity: 0, scale: 0.4 }}
       animate={{ opacity: 1, scale: 1 }}
-      transition={{ delay: index * 0.04, type: 'spring', stiffness: 300, damping: 22 }}
+      transition={{ delay: index * 0.05, type: 'spring', stiffness: 280, damping: 20 }}
       className="absolute flex flex-col items-center"
       style={{
-        bottom: 80 + index * NODE_VERTICAL_GAP,
-        left:   '50%',
-        transform: `translateX(calc(-50% + ${xOffset}px))`,
-        zIndex: 10,
+        // Position from bottom to match SVG coordinate system
+        bottom: `calc(100% - ${slot.y}px)`,
+        left:   `${leftPct}%`,
+        transform: 'translateX(-50%)',
+        zIndex: 20,
+        // Gentle sway matching the leaf underneath
+        animation: `nodeSway ${slot.swayDur}s ease-in-out ${slot.swayDelay}s infinite alternate`,
       }}>
 
-      {/* Ambient pulse for active */}
+      {/* Active glow ring */}
       {isActive && (
         <motion.div className="absolute rounded-full pointer-events-none"
-          style={{ inset: -12, backgroundColor: genre.glowColor }}
-          animate={{ opacity: [0.45, 0, 0.45], scale: [0.85, 1.15, 0.85] }}
-          transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }} />
+          style={{ inset: -10, backgroundColor: genre.glowColor }}
+          animate={{ opacity: [0.5, 0, 0.5], scale: [0.82, 1.18, 0.82] }}
+          transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }} />
       )}
 
-      <button onClick={() => !isLocked && onClick(node)} disabled={isLocked}
+      {/* The button itself */}
+      <button
+        onClick={() => !isLocked && onClick(node)}
+        disabled={isLocked}
         className="relative flex items-center justify-center rounded-full select-none"
         style={{
-          width: 66, height: 66, cursor: isLocked ? 'default' : 'pointer',
+          width: 52, height: 52,
+          cursor: isLocked ? 'default' : 'pointer',
           backgroundColor: isComplete ? genre.nodeColor
-            : isActive ? '#F5F3EB'
-            : '#C8C4BC',
-          boxShadow: isLocked ? 'none'
-            : isComplete ? `0 5px 0 ${genre.nodeColor}BB, 0 8px 28px ${genre.glowColor}`
-            : isActive   ? `0 5px 0 rgba(65,67,35,0.25), 0 6px 20px ${genre.glowColor}`
-            : '0 3px 0 #B0ACA2',
+            : isActive      ? 'rgba(245,243,235,0.96)'
+            : 'rgba(190,186,178,0.85)',
+          boxShadow: isLocked  ? 'none'
+            : isComplete ? `0 4px 0 ${genre.nodeColor}BB, 0 6px 22px ${genre.glowColor}`
+            : isActive   ? `0 4px 0 rgba(65,67,35,0.22), 0 4px 18px ${genre.glowColor}`
+            : '0 2px 0 rgba(140,136,126,0.5)',
           border: isComplete ? 'none'
-            : isActive ? `3px solid ${genre.nodeColor}`
-            : '3px solid #B8B4AA',
+            : isActive ? `2.5px solid ${genre.nodeColor}`
+            : '2.5px solid rgba(170,166,156,0.7)',
+          backdropFilter: 'blur(3px)',
           transition: 'transform 0.1s, box-shadow 0.1s',
         }}
-        onMouseDown={(e) => { if (!isLocked) e.currentTarget.style.transform = 'translateY(3px) scale(0.95)'; }}
+        onMouseDown={(e) => { if (!isLocked) e.currentTarget.style.transform = 'translateY(3px) scale(0.93)'; }}
         onMouseUp={(e)   => { e.currentTarget.style.transform = ''; }}
         onMouseLeave={(e)=> { e.currentTarget.style.transform = ''; }}>
 
         {isLocked
-          ? <Lock style={{ width: 22, height: 22, color: '#A8A49A' }} />
-          : <Icon style={{ width: 27, height: 27, color: isComplete ? '#fff' : genre.nodeColor }} />
+          ? <Lock style={{ width: 18, height: 18, color: '#A8A49A' }} />
+          : <Icon style={{ width: 22, height: 22, color: isComplete ? '#fff' : genre.nodeColor }} />
         }
 
         {status === 'in_progress' && (
-          <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full border-2 border-cream flex items-center justify-center"
+          <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-cream flex items-center justify-center"
             style={{ backgroundColor: '#414323' }}>
-            <Play style={{ width: 8, height: 8, color: '#F3F2EA', fill: '#F3F2EA' }} />
+            <Play style={{ width: 6, height: 6, color: '#F3F2EA', fill: '#F3F2EA' }} />
           </div>
         )}
       </button>
 
       {/* Stars */}
       {isComplete && (
-        <div className="flex gap-0.5 mt-1.5">
+        <div className="flex gap-0.5 mt-1">
           {[1,2,3].map((s) => (
-            <Star key={s} style={{ width: 11, height: 11, color: genre.nodeColor,
-              fill: s <= score ? genre.nodeColor : 'none' }} strokeWidth={1.5} />
+            <Star key={s} style={{
+              width: 9, height: 9,
+              color: genre.nodeColor,
+              fill: s <= score ? genre.nodeColor : 'none'
+            }} strokeWidth={1.5} />
           ))}
         </div>
       )}
 
-      {/* Label — natural parchment-style tag */}
-      <div className="mt-2 px-2.5 py-1 rounded-lg max-w-[92px] text-center"
+      {/* Parchment label tag */}
+      <div className="mt-1.5 px-2 py-0.5 rounded-md max-w-[80px] text-center"
         style={{
-          backgroundColor: isLocked ? 'rgba(195,191,183,0.82)' : 'rgba(242,239,228,0.94)',
+          backgroundColor: isLocked
+            ? 'rgba(185,181,173,0.82)'
+            : 'rgba(240,237,224,0.93)',
           backdropFilter: 'blur(4px)',
-          boxShadow: isLocked ? 'none' : '0 1px 6px rgba(65,67,35,0.14)',
-          border: isLocked ? 'none' : '1px solid rgba(65,67,35,0.08)',
+          boxShadow: isLocked ? 'none' : '0 1px 5px rgba(65,67,35,0.13)',
+          border: isLocked ? 'none' : '1px solid rgba(65,67,35,0.07)',
         }}>
-        <p className="text-[10px] font-semibold leading-tight"
+        <p className="text-[9px] font-semibold leading-snug"
           style={{ color: isLocked ? '#A8A49A' : '#414323' }}>
           {node.title}
         </p>
@@ -118,21 +131,22 @@ function LessonNode({ node, status, score, index, onClick, totalNodes }) {
   );
 }
 
-// ─── Unit section banner ──────────────────────────────────────
-function UnitBanner({ label, isLocked, bottomPx }) {
+// ─── Unit banner ──────────────────────────────────────────────
+function UnitBanner({ label, isLocked, slotY }) {
   return (
-    <div className="absolute left-0 right-0 flex justify-center px-8 z-20" style={{ bottom: bottomPx }}>
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-        className="flex items-center gap-2.5 px-5 py-2.5 rounded-2xl"
+    <div className="absolute left-0 right-0 flex justify-center px-8 z-30"
+      style={{ bottom: `calc(100% - ${slotY - 72}px)` }}>
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+        className="flex items-center gap-2 px-4 py-2 rounded-xl"
         style={{
-          backgroundColor: isLocked ? 'rgba(200,196,188,0.88)' : 'rgba(65,67,35,0.92)',
+          backgroundColor: isLocked ? 'rgba(195,191,183,0.88)' : 'rgba(60,62,25,0.91)',
           backdropFilter: 'blur(10px)',
-          boxShadow: isLocked ? 'none' : '0 4px 0 rgba(37,38,17,0.55), 0 8px 28px rgba(65,67,35,0.2)',
+          boxShadow: isLocked ? 'none' : '0 3px 0 rgba(30,31,12,0.5), 0 6px 24px rgba(65,67,35,0.18)',
         }}>
-        {isLocked && <Lock style={{ width: 13, height: 13, color: '#A8A49A' }} />}
+        {isLocked && <Lock style={{ width: 11, height: 11, color: '#A8A49A' }} />}
         <div>
-          <p className="text-[9px] font-bold uppercase tracking-widest"
-            style={{ color: isLocked ? '#A8A49A' : 'rgba(243,242,234,0.55)' }}>
+          <p className="text-[8px] font-bold uppercase tracking-widest"
+            style={{ color: isLocked ? '#A8A49A' : 'rgba(243,242,234,0.5)' }}>
             {isLocked ? 'Locked' : 'Unit'}
           </p>
           <p className="text-xs font-semibold leading-tight"
@@ -167,12 +181,12 @@ export default function LearningTree() {
     const prog = progress.find((p) => p.node_id === node.id);
     if (prog) return prog.status;
     if (index === 0) return 'available';
-    const prevProg = progress.find((p) => p.node_id === nodes[index - 1]?.id);
-    if (prevProg?.status === 'completed') return 'available';
+    const prev = progress.find((p) => p.node_id === nodes[index - 1]?.id);
+    if (prev?.status === 'completed') return 'available';
     return 'locked';
   };
 
-  const getNodeScore  = (node) => progress.find((p) => p.node_id === node.id)?.score || 0;
+  const getNodeScore = (node) => progress.find((p) => p.node_id === node.id)?.score || 0;
 
   const handleStartLesson = (node) => {
     setSelectedNode(null);
@@ -186,9 +200,12 @@ export default function LearningTree() {
 
   const UNIT_SIZE  = 5;
   const UNIT_NAMES = ['Foundations', 'Classical World', 'Modern Era', 'Advanced Study'];
-  const treeHeight = 80 + filteredNodes.length * NODE_VERTICAL_GAP + TREE_TOP_PAD;
 
-  const firstLockedUnitStart = (() => {
+  // Compute tree height and layout from actual node count
+  const treeHeight = 100 + filteredNodes.length * NODE_GAP + TREE_TOP_PAD;
+  const layout     = buildTreeLayout(filteredNodes.length, treeHeight);
+
+  const firstLockedUnit = (() => {
     for (let i = 0; i < filteredNodes.length; i++) {
       const gi = nodes.indexOf(filteredNodes[i]);
       if (getNodeStatus(filteredNodes[i], gi) === 'locked') {
@@ -205,28 +222,33 @@ export default function LearningTree() {
   return (
     <div className="flex flex-col h-screen max-h-screen overflow-hidden" style={{ backgroundColor: '#EAE7DA' }}>
 
-      {/* Header */}
-      <div className="flex-shrink-0 px-5 pt-10 pb-3 max-w-lg mx-auto w-full" style={{ zIndex: 30, position: 'relative' }}>
-        {/* Title + intro */}
-        <div className="mb-4">
-          <div className="flex items-end justify-between">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-olive/40 mb-0.5">Your Reading Path</p>
-              <h1 className="text-2xl font-semibold text-olive-dark leading-tight">Climb the Tree</h1>
-            </div>
-            <div className="text-right">
-              <p className="text-2xl font-bold text-olive-dark leading-none">{completedCount}</p>
-              <p className="text-[10px] text-olive/50 mt-0.5">of {nodes.length} complete</p>
-            </div>
-          </div>
-          <p className="text-xs text-olive/55 mt-2 leading-relaxed">
-            Each branch holds a lesson. Start at the roots and work your way up — complete a lesson to unlock the next one.
-          </p>
-        </div>
+      {/* Inline keyframe for the node sway — mirrors the SVG leaf sway */}
+      <style>{`
+        @keyframes nodeSway {
+          0%   { transform: translateX(-50%) rotate(-1.8deg); }
+          100% { transform: translateX(-50%) rotate(1.8deg);  }
+        }
+      `}</style>
 
-        {/* Progress bar — styled like tree bark / organic */}
+      {/* ── Header ── */}
+      <div className="flex-shrink-0 px-5 pt-10 pb-3 max-w-lg mx-auto w-full" style={{ zIndex: 30, position: 'relative' }}>
+        <div className="flex items-end justify-between mb-1">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-olive/40 mb-0.5">Your Reading Path</p>
+            <h1 className="text-2xl font-semibold text-olive-dark leading-tight">Climb the Tree</h1>
+          </div>
+          <div className="text-right">
+            <p className="text-2xl font-bold text-olive-dark leading-none">{completedCount}</p>
+            <p className="text-[10px] text-olive/50 mt-0.5">of {nodes.length} done</p>
+          </div>
+        </div>
+        <p className="text-xs text-olive/55 mb-3 leading-relaxed">
+          Each leaf holds a lesson. Start at the roots — complete one to unlock the next.
+        </p>
+
+        {/* Progress bar */}
         <div className="w-full h-2 rounded-full overflow-hidden mb-3"
-          style={{ backgroundColor: 'rgba(65,67,35,0.12)' }}>
+          style={{ backgroundColor: 'rgba(65,67,35,0.1)' }}>
           <motion.div animate={{ width: `${nodes.length ? (completedCount / nodes.length) * 100 : 0}%` }}
             transition={{ duration: 0.9, ease: 'easeOut' }}
             className="h-full rounded-full"
@@ -237,9 +259,10 @@ export default function LearningTree() {
         <GenreFilter selected={activeGenre} onSelect={setActiveGenre} />
       </div>
 
-      {/* Scrollable tree canvas */}
+      {/* ── Scrollable tree canvas ── */}
       <div className="flex-1 overflow-y-auto relative max-w-lg mx-auto w-full pb-24"
         style={{ overscrollBehavior: 'contain' }}>
+
         {isLoading ? (
           <div className="flex items-center justify-center h-64">
             <Loader2 className="w-6 h-6 text-olive animate-spin" />
@@ -247,37 +270,41 @@ export default function LearningTree() {
         ) : (
           <div className="relative w-full" style={{ height: treeHeight }}>
 
-            {/* Illustrated tree SVG background */}
-            <TreeBackground totalHeight={treeHeight} />
+            {/* SVG tree — leaves drawn at computed slot positions */}
+            <TreeBackground totalHeight={treeHeight} nodeCount={filteredNodes.length} />
 
-            {/* Lesson nodes */}
+            {/* Lesson nodes — each positioned at its leaf's SVG centre */}
             {filteredNodes.map((node, index) => {
-              const gi     = nodes.indexOf(node);
-              const status = getNodeStatus(node, gi);
-              const score  = getNodeScore(node);
+              const gi   = nodes.indexOf(node);
+              const slot = layout.leafSlots[index];
+              if (!slot) return null;
               return (
-                <LessonNode key={node.id} node={node} status={status} score={score}
-                  index={index} totalNodes={filteredNodes.length} onClick={setSelectedNode} />
+                <LessonNode key={node.id} node={node}
+                  status={getNodeStatus(node, gi)}
+                  score={getNodeScore(node)}
+                  slot={slot} index={index}
+                  onClick={setSelectedNode} />
               );
             })}
 
-            {/* Unit banners */}
+            {/* Unit banners — before each unit of 5 */}
             {filteredNodes.map((node, index) => {
               if (index % UNIT_SIZE !== 0) return null;
-              const unitIndex    = Math.floor(index / UNIT_SIZE);
-              const unitName     = UNIT_NAMES[unitIndex] || `Unit ${unitIndex + 1}`;
-              const unitLocked   = index >= firstLockedUnitStart;
-              const bannerBottom = 80 + index * NODE_VERTICAL_GAP + 100;
+              const slot       = layout.leafSlots[index];
+              if (!slot) return null;
+              const unitIndex  = Math.floor(index / UNIT_SIZE);
+              const unitName   = UNIT_NAMES[unitIndex] || `Unit ${unitIndex + 1}`;
+              const unitLocked = index >= firstLockedUnit;
               return (
-                <UnitBanner key={`unit-${index}`} label={unitName}
-                  isLocked={unitLocked} bottomPx={bannerBottom} />
+                <UnitBanner key={`unit-${index}`}
+                  label={unitName} isLocked={unitLocked} slotY={slot.y} />
               );
             })}
 
-            {/* Top-of-tree label */}
-            <div className="absolute left-0 right-0 flex justify-center" style={{ top: 28 }}>
-              <p className="text-[11px] text-olive/40 font-medium px-3 py-1 rounded-full"
-                style={{ backgroundColor: 'rgba(234,231,218,0.75)', backdropFilter: 'blur(4px)' }}>
+            {/* Crown of tree */}
+            <div className="absolute left-0 right-0 flex justify-center" style={{ top: 24 }}>
+              <p className="text-[11px] text-olive/35 font-medium px-3 py-1 rounded-full"
+                style={{ backgroundColor: 'rgba(234,231,218,0.7)', backdropFilter: 'blur(4px)' }}>
                 More lessons coming soon ✦
               </p>
             </div>
@@ -285,10 +312,10 @@ export default function LearningTree() {
         )}
       </div>
 
-      {/* Node dialog */}
+      {/* ── Tap dialog ── */}
       <Dialog open={!!selectedNode} onOpenChange={() => setSelectedNode(null)}>
         <DialogContent className="mx-4 border-neutral_tone/30"
-          style={{ backgroundColor: '#FAFAF6', borderRadius: '1.5rem' }}>
+          style={{ backgroundColor: '#F5F3EB', borderRadius: '1.5rem' }}>
           <DialogHeader>
             <div className="flex items-center gap-3 mb-2">
               {selectedNode && (() => {
@@ -296,9 +323,9 @@ export default function LearningTree() {
                 const g    = getGenre(selectedNode.genre || 'classics');
                 return (
                   <div className="flex-shrink-0 rounded-full flex items-center justify-center"
-                    style={{ width: 52, height: 52, backgroundColor: g.nodeColor,
+                    style={{ width: 50, height: 50, backgroundColor: g.nodeColor,
                       boxShadow: `0 4px 14px ${g.glowColor}` }}>
-                    <Icon style={{ width: 22, height: 22, color: '#fff' }} />
+                    <Icon style={{ width: 20, height: 20, color: '#fff' }} />
                   </div>
                 );
               })()}
@@ -324,7 +351,7 @@ export default function LearningTree() {
             return (
               <div className="flex items-center gap-1.5 py-1">
                 {[1,2,3].map((s) => (
-                  <Star key={s} style={{ width: 18, height: 18, color: g.nodeColor,
+                  <Star key={s} style={{ width: 17, height: 17, color: g.nodeColor,
                     fill: s <= sc ? g.nodeColor : 'none' }} strokeWidth={1.5} />
                 ))}
                 <span className="text-xs text-olive/50 ml-1">
@@ -343,7 +370,7 @@ export default function LearningTree() {
             {selectedStatus === 'in_progress' ? 'Continue Lesson'
               : selectedStatus === 'completed' ? 'Review Lesson'
               : 'Start Lesson'}
-            <ChevronRight style={{ width: 16, height: 16, marginLeft: 4 }} />
+            <ChevronRight style={{ width: 15, height: 15, marginLeft: 4 }} />
           </DuoButton>
         </DialogContent>
       </Dialog>
