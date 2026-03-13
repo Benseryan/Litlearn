@@ -26,13 +26,17 @@ const ICON_MAP = {
 const TREE_TOP_PAD = 160;
 
 // ─── Lesson node — sits ON the leaf ──────────────────────────
-function LessonNode({ node, status, score, slot, index, onClick }) {
+function LessonNode({ node, status, score, slot, index, unitColor, onClick }) {
   const Icon       = ICON_MAP[node.icon] || BookOpen;
   const genre      = getGenre(node.genre || 'classics');
   const isLocked   = status === 'locked';
   const isComplete = status === 'completed';
   const isActive   = status === 'available' || status === 'in_progress';
 
+  // Use unit colour for active/complete states, genre colour as fallback
+  const activeColor = unitColor?.bg    || genre.nodeColor;
+  const glowColor   = unitColor?.bg    ? `${unitColor.bg}55` : genre.glowColor;
+  const iconColor   = isComplete ? (unitColor?.text || '#fff') : (unitColor?.bg || genre.nodeColor);
   // Convert SVG coordinates to CSS percent positions
   // slot.x / W gives us the fraction across the 400px viewBox
   const leftPct = (slot.x / W) * 100;
@@ -56,7 +60,7 @@ function LessonNode({ node, status, score, slot, index, onClick }) {
       {/* Active glow ring */}
       {isActive && (
         <motion.div className="absolute rounded-full pointer-events-none"
-          style={{ inset: -10, backgroundColor: genre.glowColor }}
+          style={{ inset: -10, backgroundColor: glowColor }}
           animate={{ opacity: [0.5, 0, 0.5], scale: [0.82, 1.18, 0.82] }}
           transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }} />
       )}
@@ -69,15 +73,15 @@ function LessonNode({ node, status, score, slot, index, onClick }) {
         style={{
           width: 52, height: 52,
           cursor: isLocked ? 'default' : 'pointer',
-          backgroundColor: isComplete ? genre.nodeColor
+          backgroundColor: isComplete ? activeColor
             : isActive      ? 'rgba(245,243,235,0.96)'
             : 'rgba(190,186,178,0.85)',
           boxShadow: isLocked  ? 'none'
-            : isComplete ? `0 4px 0 ${genre.nodeColor}BB, 0 6px 22px ${genre.glowColor}`
-            : isActive   ? `0 4px 0 rgba(65,67,35,0.22), 0 4px 18px ${genre.glowColor}`
+            : isComplete ? `0 4px 0 ${unitColor?.shadow || activeColor}BB, 0 6px 22px ${glowColor}`
+            : isActive   ? `0 4px 0 rgba(65,67,35,0.22), 0 4px 18px ${glowColor}`
             : '0 2px 0 rgba(140,136,126,0.5)',
           border: isComplete ? 'none'
-            : isActive ? `2.5px solid ${genre.nodeColor}`
+            : isActive ? `2.5px solid ${activeColor}`
             : '2.5px solid rgba(170,166,156,0.7)',
           backdropFilter: 'blur(3px)',
           transition: 'transform 0.1s, box-shadow 0.1s',
@@ -88,7 +92,7 @@ function LessonNode({ node, status, score, slot, index, onClick }) {
 
         {isLocked
           ? <Lock style={{ width: 18, height: 18, color: '#A8A49A' }} />
-          : <Icon style={{ width: 22, height: 22, color: isComplete ? '#fff' : genre.nodeColor }} />
+          : <Icon style={{ width: 22, height: 22, color: iconColor }} />
         }
 
         {status === 'in_progress' && (
@@ -105,8 +109,8 @@ function LessonNode({ node, status, score, slot, index, onClick }) {
           {[1,2,3].map((s) => (
             <Star key={s} style={{
               width: 9, height: 9,
-              color: genre.nodeColor,
-              fill: s <= score ? genre.nodeColor : 'none'
+              color: activeColor,
+              fill: s <= score ? activeColor : 'none'
             }} strokeWidth={1.5} />
           ))}
         </div>
@@ -132,28 +136,58 @@ function LessonNode({ node, status, score, slot, index, onClick }) {
 }
 
 // ─── Unit banner ──────────────────────────────────────────────
-function UnitBanner({ label, isLocked, slotY }) {
+// Unit colours — each unit has its own identity like Duolingo sections
+const UNIT_COLORS = [
+  { bg: '#5A6E35', shadow: '#3A4820', text: '#F3F2EA', accent: '#ADB684' },
+  { bg: '#7A5C30', shadow: '#4E3A1A', text: '#F3F2EA', accent: '#C8A86A' },
+  { bg: '#3A6058', shadow: '#223830', text: '#F3F2EA', accent: '#7ABFB4' },
+  { bg: '#5A3A6E', shadow: '#38225A', text: '#F3F2EA', accent: '#B07ACC' },
+];
+
+function UnitBanner({ label, unitIndex, isLocked, bottomPx }) {
+  const colors = UNIT_COLORS[unitIndex % UNIT_COLORS.length];
   return (
-    <div className="absolute left-0 right-0 flex justify-center px-8 z-30"
-      style={{ bottom: `calc(100% - ${slotY - 72}px)` }}>
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-        className="flex items-center gap-2 px-4 py-2 rounded-xl"
+    <div className="absolute left-0 right-0 z-30 px-5" style={{ bottom: bottomPx }}>
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+        className="w-full rounded-2xl overflow-hidden"
         style={{
-          backgroundColor: isLocked ? 'rgba(195,191,183,0.88)' : 'rgba(60,62,25,0.91)',
-          backdropFilter: 'blur(10px)',
-          boxShadow: isLocked ? 'none' : '0 3px 0 rgba(30,31,12,0.5), 0 6px 24px rgba(65,67,35,0.18)',
+          backgroundColor: isLocked ? 'rgba(190,186,178,0.9)' : colors.bg,
+          boxShadow: isLocked ? 'none' : `0 4px 0 ${colors.shadow}, 0 8px 28px ${colors.shadow}88`,
         }}>
-        {isLocked && <Lock style={{ width: 11, height: 11, color: '#A8A49A' }} />}
-        <div>
-          <p className="text-[8px] font-bold uppercase tracking-widest"
-            style={{ color: isLocked ? '#A8A49A' : 'rgba(243,242,234,0.5)' }}>
-            {isLocked ? 'Locked' : 'Unit'}
-          </p>
-          <p className="text-xs font-semibold leading-tight"
-            style={{ color: isLocked ? '#A8A49A' : '#F3F2EA' }}>
-            {label}
-          </p>
+        <div className="flex items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-3">
+            {isLocked
+              ? <div className="w-8 h-8 rounded-full bg-neutral_tone/40 flex items-center justify-center">
+                  <Lock style={{ width: 14, height: 14, color: '#A8A49A' }} />
+                </div>
+              : <div className="w-8 h-8 rounded-full flex items-center justify-center"
+                  style={{ backgroundColor: colors.shadow }}>
+                  <span className="text-sm font-bold" style={{ color: colors.accent }}>
+                    {unitIndex + 1}
+                  </span>
+                </div>
+            }
+            <div>
+              <p className="text-[9px] font-bold uppercase tracking-widest mb-0.5"
+                style={{ color: isLocked ? '#A8A49A' : `${colors.text}88` }}>
+                {isLocked ? 'Locked Section' : `Unit ${unitIndex + 1}`}
+              </p>
+              <p className="text-sm font-semibold leading-none"
+                style={{ color: isLocked ? '#A8A49A' : colors.text }}>
+                {label}
+              </p>
+            </div>
+          </div>
+          {!isLocked && (
+            <div className="flex gap-1">
+              {[0,1,2].map((d) => (
+                <div key={d} className="w-1.5 h-1.5 rounded-full"
+                  style={{ backgroundColor: colors.accent, opacity: 0.4 + d * 0.25 }} />
+              ))}
+            </div>
+          )}
         </div>
+        {!isLocked && <div className="h-1 w-full" style={{ backgroundColor: colors.shadow }} />}
       </motion.div>
     </div>
   );
@@ -275,29 +309,36 @@ export default function LearningTree() {
 
             {/* Lesson nodes — each positioned at its leaf's SVG centre */}
             {filteredNodes.map((node, index) => {
-              const gi   = nodes.indexOf(node);
-              const slot = layout.leafSlots[index];
+              const gi        = nodes.indexOf(node);
+              const slot      = layout.leafSlots[index];
               if (!slot) return null;
+              const unitIndex = Math.floor(index / UNIT_SIZE);
+              const unitColor = UNIT_COLORS[unitIndex % UNIT_COLORS.length];
               return (
                 <LessonNode key={node.id} node={node}
                   status={getNodeStatus(node, gi)}
                   score={getNodeScore(node)}
                   slot={slot} index={index}
+                  unitColor={unitColor}
                   onClick={setSelectedNode} />
               );
             })}
 
-            {/* Unit banners — before each unit of 5 */}
+            {/* Unit banners — divider sitting just below first node of each unit */}
             {filteredNodes.map((node, index) => {
               if (index % UNIT_SIZE !== 0) return null;
-              const slot       = layout.leafSlots[index];
+              const slot      = layout.leafSlots[index];
               if (!slot) return null;
               const unitIndex  = Math.floor(index / UNIT_SIZE);
               const unitName   = UNIT_NAMES[unitIndex] || `Unit ${unitIndex + 1}`;
               const unitLocked = index >= firstLockedUnit;
+              // Convert SVG y to bottom-offset: SVG y=0 is top, bottom offset = treeHeight - svgY
+              // Place banner 100px below the first node of this unit
+              const bannerBottom = treeHeight - slot.y - 110;
               return (
                 <UnitBanner key={`unit-${index}`}
-                  label={unitName} isLocked={unitLocked} slotY={slot.y} />
+                  label={unitName} unitIndex={unitIndex}
+                  isLocked={unitLocked} bottomPx={bannerBottom} />
               );
             })}
 
