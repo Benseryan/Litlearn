@@ -35,17 +35,16 @@ function LessonNode({ node, status, score, index, onClick, totalNodes }) {
   const isLocked     = status === 'locked';
   const isComplete   = status === 'completed';
   const isActive     = status === 'available' || status === 'in_progress';
-  const reverseIndex = totalNodes - 1 - index;
-  const xOffset      = BRANCH_OFFSETS[index % BRANCH_OFFSETS.length];
+  const xOffset = BRANCH_OFFSETS[index % BRANCH_OFFSETS.length];
 
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.5 }}
       animate={{ opacity: 1, scale: 1 }}
-      transition={{ delay: reverseIndex * 0.04, type: 'spring', stiffness: 300, damping: 22 }}
+      transition={{ delay: index * 0.04, type: 'spring', stiffness: 300, damping: 22 }}
       className="absolute flex flex-col items-center"
       style={{
-        bottom: 80 + reverseIndex * NODE_VERTICAL_GAP,
+        bottom: 80 + index * NODE_VERTICAL_GAP,
         left:   '50%',
         transform: `translateX(calc(-50% + ${xOffset}px))`,
         zIndex: 10,
@@ -63,13 +62,17 @@ function LessonNode({ node, status, score, index, onClick, totalNodes }) {
         className="relative flex items-center justify-center rounded-full select-none"
         style={{
           width: 66, height: 66, cursor: isLocked ? 'default' : 'pointer',
-          backgroundColor: isComplete ? genre.nodeColor : isActive ? '#FAFAF6' : '#C8C4BC',
+          backgroundColor: isComplete ? genre.nodeColor
+            : isActive ? '#F5F3EB'
+            : '#C8C4BC',
           boxShadow: isLocked ? 'none'
             : isComplete ? `0 5px 0 ${genre.nodeColor}BB, 0 8px 28px ${genre.glowColor}`
-            : isActive   ? `0 5px 0 #B0ACA2, 0 6px 20px ${genre.glowColor}`
+            : isActive   ? `0 5px 0 rgba(65,67,35,0.25), 0 6px 20px ${genre.glowColor}`
             : '0 3px 0 #B0ACA2',
-          border: isActive ? `3px solid ${genre.nodeColor}` : '3px solid transparent',
-          transition: 'transform 0.1s',
+          border: isComplete ? 'none'
+            : isActive ? `3px solid ${genre.nodeColor}`
+            : '3px solid #B8B4AA',
+          transition: 'transform 0.1s, box-shadow 0.1s',
         }}
         onMouseDown={(e) => { if (!isLocked) e.currentTarget.style.transform = 'translateY(3px) scale(0.95)'; }}
         onMouseUp={(e)   => { e.currentTarget.style.transform = ''; }}
@@ -81,8 +84,9 @@ function LessonNode({ node, status, score, index, onClick, totalNodes }) {
         }
 
         {status === 'in_progress' && (
-          <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-olive-dark border-2 border-cream flex items-center justify-center">
-            <Play style={{ width: 8, height: 8, color: '#fff', fill: '#fff' }} />
+          <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full border-2 border-cream flex items-center justify-center"
+            style={{ backgroundColor: '#414323' }}>
+            <Play style={{ width: 8, height: 8, color: '#F3F2EA', fill: '#F3F2EA' }} />
           </div>
         )}
       </button>
@@ -97,12 +101,13 @@ function LessonNode({ node, status, score, index, onClick, totalNodes }) {
         </div>
       )}
 
-      {/* Label pill */}
-      <div className="mt-2 px-2.5 py-1 rounded-xl max-w-[92px] text-center"
+      {/* Label — natural parchment-style tag */}
+      <div className="mt-2 px-2.5 py-1 rounded-lg max-w-[92px] text-center"
         style={{
-          backgroundColor: isLocked ? 'rgba(200,196,188,0.88)' : 'rgba(255,255,251,0.93)',
+          backgroundColor: isLocked ? 'rgba(195,191,183,0.82)' : 'rgba(242,239,228,0.94)',
           backdropFilter: 'blur(4px)',
-          boxShadow: '0 1px 8px rgba(65,67,35,0.1)',
+          boxShadow: isLocked ? 'none' : '0 1px 6px rgba(65,67,35,0.14)',
+          border: isLocked ? 'none' : '1px solid rgba(65,67,35,0.08)',
         }}>
         <p className="text-[10px] font-semibold leading-tight"
           style={{ color: isLocked ? '#A8A49A' : '#414323' }}>
@@ -201,18 +206,34 @@ export default function LearningTree() {
     <div className="flex flex-col h-screen max-h-screen overflow-hidden" style={{ backgroundColor: '#EAE7DA' }}>
 
       {/* Header */}
-      <div className="flex-shrink-0 px-5 pt-12 pb-3 max-w-lg mx-auto w-full" style={{ zIndex: 30, position: 'relative' }}>
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h1 className="text-xl font-semibold text-olive-dark">Learn</h1>
-            <p className="text-xs text-olive/60 mt-0.5">{completedCount} of {nodes.length} complete</p>
+      <div className="flex-shrink-0 px-5 pt-10 pb-3 max-w-lg mx-auto w-full" style={{ zIndex: 30, position: 'relative' }}>
+        {/* Title + intro */}
+        <div className="mb-4">
+          <div className="flex items-end justify-between">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-olive/40 mb-0.5">Your Reading Path</p>
+              <h1 className="text-2xl font-semibold text-olive-dark leading-tight">Climb the Tree</h1>
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-bold text-olive-dark leading-none">{completedCount}</p>
+              <p className="text-[10px] text-olive/50 mt-0.5">of {nodes.length} complete</p>
+            </div>
           </div>
+          <p className="text-xs text-olive/55 mt-2 leading-relaxed">
+            Each branch holds a lesson. Start at the roots and work your way up — complete a lesson to unlock the next one.
+          </p>
         </div>
-        <div className="w-full h-1.5 bg-neutral_tone/30 rounded-full overflow-hidden mb-3">
+
+        {/* Progress bar — styled like tree bark / organic */}
+        <div className="w-full h-2 rounded-full overflow-hidden mb-3"
+          style={{ backgroundColor: 'rgba(65,67,35,0.12)' }}>
           <motion.div animate={{ width: `${nodes.length ? (completedCount / nodes.length) * 100 : 0}%` }}
-            transition={{ duration: 0.8 }}
-            className="h-full rounded-full" style={{ backgroundColor: genreConfig.progressColor }} />
+            transition={{ duration: 0.9, ease: 'easeOut' }}
+            className="h-full rounded-full"
+            style={{ backgroundColor: genreConfig.progressColor,
+              boxShadow: `0 0 8px ${genreConfig.glowColor}` }} />
         </div>
+
         <GenreFilter selected={activeGenre} onSelect={setActiveGenre} />
       </div>
 
@@ -243,11 +264,10 @@ export default function LearningTree() {
             {/* Unit banners */}
             {filteredNodes.map((node, index) => {
               if (index % UNIT_SIZE !== 0) return null;
-              const reverseIndex = filteredNodes.length - 1 - index;
               const unitIndex    = Math.floor(index / UNIT_SIZE);
               const unitName     = UNIT_NAMES[unitIndex] || `Unit ${unitIndex + 1}`;
               const unitLocked   = index >= firstLockedUnitStart;
-              const bannerBottom = 80 + reverseIndex * NODE_VERTICAL_GAP + 100;
+              const bannerBottom = 80 + index * NODE_VERTICAL_GAP + 100;
               return (
                 <UnitBanner key={`unit-${index}`} label={unitName}
                   isLocked={unitLocked} bottomPx={bannerBottom} />
