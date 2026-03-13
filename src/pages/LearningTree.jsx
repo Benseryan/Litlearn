@@ -243,7 +243,13 @@ export default function LearningTree() {
     for (let i = 0; i < filteredNodes.length; i++) {
       const gi = nodes.indexOf(filteredNodes[i]);
       if (getNodeStatus(filteredNodes[i], gi) === 'locked') {
-        return Math.floor(i / UNIT_SIZE) * UNIT_SIZE;
+        // Unit is locked only if the very first node of that unit is locked
+        const unitStart = Math.floor(i / UNIT_SIZE) * UNIT_SIZE;
+        const firstNodeOfUnit = filteredNodes[unitStart];
+        const firstGi = nodes.indexOf(firstNodeOfUnit);
+        if (firstNodeOfUnit && getNodeStatus(firstNodeOfUnit, firstGi) === 'locked') {
+          return unitStart;
+        }
       }
     }
     return filteredNodes.length;
