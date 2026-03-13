@@ -4,26 +4,34 @@ import { buildTreeLayout } from './treeLayout';
 export default function TreeBackground({ totalHeight = 1800, nodeCount = 10 }) {
   const { trunkPoints, leafSlots, W, H, cx } = buildTreeLayout(nodeCount, totalHeight);
 
-  // ── Trunk outline path ────────────────────────────────────
+  // Trunk path — starts at very bottom of SVG (y=H), goes up through all trunk points
   const buildTrunkPath = () => {
     const pts = trunkPoints;
     if (pts.length === 0) return '';
-    const bot = pts[0];
-    const top = pts[pts.length - 1];
-    let d = `M ${bot.x - 22} ${bot.y + 50}`;
+
+    // Left side going upward
+    let d = `M ${cx - 24} ${H}`;
     for (let i = 0; i < pts.length; i++) {
-      const t  = 22 - i * 1.3;
-      const cy = i === 0 ? bot.y : (pts[i-1].y + pts[i].y) / 2;
-      d += ` Q ${pts[i].x - t - 8} ${cy} ${pts[i].x - Math.max(t, 3)} ${pts[i].y}`;
+      const taper = Math.max(4, 24 - i * 1.4);
+      const midy  = i === 0 ? (H + pts[0].y) / 2 : (pts[i-1].y + pts[i].y) / 2;
+      d += ` Q ${pts[i].x - taper - 6} ${midy} ${pts[i].x - taper} ${pts[i].y}`;
     }
-    const topT = Math.max(22 - (pts.length - 1) * 1.3, 3);
-    d += ` Q ${top.x} ${top.y - 28} ${top.x + topT} ${top.y}`;
+
+    // Top cap
+    const lastPt   = pts[pts.length - 1];
+    const topTaper = Math.max(4, 24 - (pts.length - 1) * 1.4);
+    d += ` Q ${lastPt.x} ${lastPt.y - 30} ${lastPt.x + topTaper} ${lastPt.y}`;
+
+    // Right side going downward
     for (let i = pts.length - 1; i >= 0; i--) {
-      const t  = 22 - i * 1.3;
-      const cy = i < pts.length - 1 ? (pts[i].y + pts[i+1].y) / 2 : pts[i].y - 40;
-      d += ` Q ${pts[i].x + Math.max(t, 3) + 8} ${cy} ${pts[i].x + Math.max(t, 3)} ${pts[i].y}`;
+      const taper = Math.max(4, 24 - i * 1.4);
+      const midy  = i < pts.length - 1 ? (pts[i].y + pts[i+1].y) / 2 : (pts[i].y + H) / 2;
+      d += ` Q ${pts[i].x + taper + 6} ${midy} ${pts[i].x + taper} ${pts[i].y}`;
     }
-    return d + ' Z';
+
+    // Close back to bottom
+    d += ` L ${cx + 24} ${H} Z`;
+    return d;
   };
 
   return (
@@ -44,19 +52,9 @@ export default function TreeBackground({ totalHeight = 1800, nodeCount = 10 }) {
           <stop offset="100%" stopColor="#353620" />
         </linearGradient>
 
-        <linearGradient id="trunkGrad2" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%"   stopColor="#3A3C20" />
-          <stop offset="50%"  stopColor="#52553A" />
-          <stop offset="100%" stopColor="#3A3C20" />
-        </linearGradient>
-
         <filter id="bark" x="-5%" y="-2%" width="110%" height="104%">
           <feTurbulence type="fractalNoise" baseFrequency="0.035 0.1" numOctaves="3" seed="7" result="noise"/>
           <feDisplacementMap in="SourceGraphic" in2="noise" scale="3.5" xChannelSelector="R" yChannelSelector="G"/>
-        </filter>
-
-        <filter id="leafSoft" x="-15%" y="-15%" width="130%" height="130%">
-          <feGaussianBlur stdDeviation="1.2"/>
         </filter>
 
         <radialGradient id="lg1" cx="38%" cy="35%" r="60%">
@@ -77,89 +75,90 @@ export default function TreeBackground({ totalHeight = 1800, nodeCount = 10 }) {
 
         <style>{`
           @keyframes branchSway {
-            0%   { transform: rotate(-3.5deg); }
-            100% { transform: rotate(3.5deg);  }
+            0%   { transform: rotate(-3deg); }
+            100% { transform: rotate(3deg);  }
           }
           @keyframes leafPulse {
             0%   { transform: rotate(-2deg) scale(0.97); }
             100% { transform: rotate(2deg)  scale(1.03); }
           }
           @keyframes leafWiggle {
-            0%   { transform: rotate(-5deg) scale(1);    }
-            100% { transform: rotate(4deg)  scale(1.05); }
+            0%   { transform: rotate(-4deg) scale(1);    }
+            100% { transform: rotate(4deg)  scale(1.04); }
           }
         `}</style>
       </defs>
 
       {/* ── Ground / roots ── */}
-      <ellipse cx={cx} cy={H - 28} rx={68} ry={16} fill="#2E2F18" opacity={0.22}/>
-      <ellipse cx={cx - 52} cy={H - 18} rx={32} ry={9} fill="#2E2F18" opacity={0.15}
-        transform={`rotate(-18,${cx-52},${H-18})`}/>
-      <ellipse cx={cx + 58} cy={H - 20} rx={28} ry={8} fill="#2E2F18" opacity={0.15}
-        transform={`rotate(14,${cx+58},${H-20})`}/>
+      <ellipse cx={cx}       cy={H}      rx={80}  ry={20}  fill="#2E2F18" opacity={0.3}/>
+      <ellipse cx={cx - 55}  cy={H - 5}  rx={40}  ry={12}  fill="#2E2F18" opacity={0.2}
+        transform={`rotate(-15,${cx-55},${H-5})`}/>
+      <ellipse cx={cx + 60}  cy={H - 6}  rx={36}  ry={11}  fill="#2E2F18" opacity={0.2}
+        transform={`rotate(14,${cx+60},${H-6})`}/>
+      <ellipse cx={cx - 20}  cy={H}      rx={20}  ry={7}   fill="#252611" opacity={0.18}
+        transform={`rotate(-25,${cx-20},${H})`}/>
+      <ellipse cx={cx + 25}  cy={H}      rx={18}  ry={6}   fill="#252611" opacity={0.18}
+        transform={`rotate(20,${cx+25},${H})`}/>
 
-      {/* ── Branches behind trunk ── */}
+      {/* ── Branches (drawn behind trunk) ── */}
       {leafSlots.map((s, i) => (
         <g key={`branch-${i}`}
           style={{
             animation: `branchSway ${s.swayDur}s ease-in-out ${s.swayDelay}s infinite alternate`,
             transformOrigin: `${s.trunkX}px ${s.trunkY}px`,
           }}>
-          {/* Main branch */}
+
+          {/* Branch line */}
           <path
             d={`M ${s.trunkX} ${s.trunkY} Q ${s.cpx} ${s.cpy} ${s.x} ${s.y}`}
-            fill="none" stroke="url(#trunkGrad)" strokeWidth={s.thick}
+            fill="none" stroke="#3A3C20" strokeWidth={s.thick}
             strokeLinecap="round" filter="url(#bark)"/>
 
-          {/* ── Leaf group — three overlapping ellipses for depth ── */}
+          {/* Leaf group */}
           <g style={{
             animation: `leafPulse ${s.swayDur * 0.9}s ease-in-out ${s.swayDelay + 0.3}s infinite alternate`,
             transformOrigin: `${s.x}px ${s.y}px`,
           }}>
-            {/* Shadow/depth blob behind */}
+            {/* Shadow blob */}
             <ellipse
-              cx={s.x + s.side * 6} cy={s.y + 5}
-              rx={s.leafRx * 0.88} ry={s.leafRy * 0.82}
-              fill={i % 3 === 0 ? '#6A8040' : i % 3 === 1 ? '#587030' : '#506828'}
-              opacity={0.45}
-              transform={`rotate(${s.angle * 0.4}, ${s.x + s.side * 6}, ${s.y + 5})`}/>
+              cx={s.x + s.side * 5} cy={s.y + 6}
+              rx={s.leafRx * 0.85} ry={s.leafRy * 0.8}
+              fill={i % 3 === 0 ? '#5A7030' : i % 3 === 1 ? '#4E6228' : '#486025'}
+              opacity={0.4}
+              transform={`rotate(${s.angle}, ${s.x + s.side * 5}, ${s.y + 6})`}/>
 
-            {/* Main leaf body */}
+            {/* Main leaf */}
             <ellipse
               cx={s.x} cy={s.y}
               rx={s.leafRx} ry={s.leafRy}
               fill={`url(#lg${(i % 3) + 1})`}
-              transform={`rotate(${s.angle * 0.35}, ${s.x}, ${s.y})`}/>
+              transform={`rotate(${s.angle}, ${s.x}, ${s.y})`}/>
 
-            {/* Highlight specular */}
+            {/* Highlight */}
             <ellipse
-              cx={s.x - s.side * 8} cy={s.y - 7}
-              rx={s.leafRx * 0.42} ry={s.leafRy * 0.38}
-              fill="#E2EEB8" opacity={0.5}
-              transform={`rotate(${s.angle * 0.35}, ${s.x - s.side * 8}, ${s.y - 7})`}/>
+              cx={s.x - s.side * 9} cy={s.y - 7}
+              rx={s.leafRx * 0.38} ry={s.leafRy * 0.35}
+              fill="#E2EEB8" opacity={0.48}
+              transform={`rotate(${s.angle}, ${s.x - s.side * 9}, ${s.y - 7})`}/>
 
-            {/* Leaf vein line */}
+            {/* Centre vein */}
             <line
-              x1={s.x - Math.cos((s.angle * Math.PI)/180) * s.leafRx * 0.7}
-              y1={s.y - Math.sin((s.angle * Math.PI)/180) * s.leafRy * 0.7}
-              x2={s.x + Math.cos((s.angle * Math.PI)/180) * s.leafRx * 0.7}
-              y2={s.y + Math.sin((s.angle * Math.PI)/180) * s.leafRy * 0.7}
-              stroke="#7A9040" strokeWidth={0.8} opacity={0.4} strokeLinecap="round"/>
+              x1={s.x - s.side * s.leafRx * 0.65} y1={s.y}
+              x2={s.x + s.side * s.leafRx * 0.65} y2={s.y}
+              stroke="#7A9040" strokeWidth={0.8} opacity={0.35} strokeLinecap="round"/>
           </g>
 
-          {/* Small secondary leaflets near the branch tip */}
+          {/* Small secondary leaflets at branch tip */}
           {[0, 1].map((li) => {
-            const offsetAng = (s.angle + (li === 0 ? 35 : -30)) * Math.PI / 180;
-            const dist      = s.swayDur * 4 + li * 14; // deterministic offset
-            const lx2 = s.x + Math.cos(offsetAng) * (18 + li * 10);
-            const ly2 = s.y + Math.sin(offsetAng) * (12 + li * 6) - 8;
+            const lx2 = s.x + s.side * (10 + li * 14);
+            const ly2 = s.y - 10 - li * 8;
             return (
               <ellipse key={li}
-                cx={lx2} cy={ly2} rx={11 - li * 2} ry={7 - li}
-                fill={li === 0 ? '#ADB684' : '#96A96C'} opacity={0.6}
-                transform={`rotate(${s.angle + (li === 0 ? 20 : -25)}, ${lx2}, ${ly2})`}
+                cx={lx2} cy={ly2} rx={10 - li * 2} ry={6 - li}
+                fill={li === 0 ? '#ADB684' : '#96A96C'} opacity={0.55}
+                transform={`rotate(${s.angle * 0.6 + li * 15}, ${lx2}, ${ly2})`}
                 style={{
-                  animation: `leafWiggle ${2.2 + li * 0.5}s ease-in-out ${s.swayDelay + li * 0.4}s infinite alternate`,
+                  animation: `leafWiggle ${2.4 + li * 0.5}s ease-in-out ${s.swayDelay + li * 0.35}s infinite alternate`,
                   transformOrigin: `${lx2}px ${ly2}px`,
                 }}/>
             );
@@ -167,26 +166,26 @@ export default function TreeBackground({ totalHeight = 1800, nodeCount = 10 }) {
         </g>
       ))}
 
-      {/* ── Trunk (drawn over branches so it looks solid) ── */}
+      {/* ── Trunk (over branches) ── */}
       <path d={buildTrunkPath()} fill="url(#trunkGrad)" filter="url(#bark)"/>
 
-      {/* Trunk highlight */}
+      {/* Trunk highlight stripe */}
       <path
-        d={`M ${cx - 7} ${H - 45} Q ${cx - 9} ${H * 0.55} ${cx - 4} ${trunkPoints[trunkPoints.length-1]?.y ?? H * 0.2}`}
-        fill="none" stroke="url(#trunkGrad2)" strokeWidth={5}
-        strokeLinecap="round" opacity={0.35}/>
+        d={`M ${cx - 7} ${H - 20} Q ${cx - 9} ${H * 0.5} ${cx - 4} ${trunkPoints[trunkPoints.length-1]?.y ?? H * 0.2}`}
+        fill="none" stroke="#52553A" strokeWidth={5}
+        strokeLinecap="round" opacity={0.3}/>
 
-      {/* ── Tiny drifting background leaves (ambient) ── */}
-      {[...Array(6)].map((_, i) => {
-        const lx = 30 + i * 62 + (i % 2 === 0 ? 20 : -10);
-        const ly = H * 0.15 + i * H * 0.1;
+      {/* Ambient drifting background leaves */}
+      {[...Array(5)].map((_, i) => {
+        const lx = 25 + i * 72;
+        const ly = H * 0.12 + i * H * 0.1;
         return (
           <ellipse key={`ambient-${i}`}
             cx={lx} cy={ly} rx={7} ry={4}
-            fill="#ADB684" opacity={0.18}
-            transform={`rotate(${i * 37}, ${lx}, ${ly})`}
+            fill="#ADB684" opacity={0.15}
+            transform={`rotate(${i * 40}, ${lx}, ${ly})`}
             style={{
-              animation: `leafWiggle ${4 + i * 0.6}s ease-in-out ${i * 0.5}s infinite alternate`,
+              animation: `leafWiggle ${4.5 + i * 0.6}s ease-in-out ${i * 0.6}s infinite alternate`,
               transformOrigin: `${lx}px ${ly}px`,
             }}/>
         );
