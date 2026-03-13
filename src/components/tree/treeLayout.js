@@ -1,4 +1,3 @@
-// ─── Shared tree layout — single source of truth ─────────────
 const NODE_GAP = 160;
 const W        = 400;
 const cx       = W / 2;
@@ -17,28 +16,25 @@ export function buildTreeLayout(nodeCount, totalHeight) {
 
   const trunkPoints = Array.from({ length: nodeCount }, (_, i) => ({
     x: cx + Math.sin(i * 0.9 + 0.5) * 14,
-    y: H - 80 - i * NODE_GAP,
+    y: H - 100 - i * NODE_GAP,
   }));
 
   const leafSlots = trunkPoints.map((pt, i) => {
-    // Strict left/right alternation — no randomness on side
-    const side      = i % 2 === 0 ? -1 : 1;
-    const baseAngle = 40 + rnd() * 18; // 40–58° — random angle but side is fixed
-    const angle     = side * baseAngle;
-    const branchLen = 92 + rnd() * 44;
-    const rad       = (angle * Math.PI) / 180;
+    const side     = i % 2 === 0 ? -1 : 1;
+    const spreadX  = 85 + rnd() * 40;
+    const spreadY  = 30 + rnd() * 25;
 
-    const lx  = pt.x + Math.cos(rad) * branchLen;
-    const ly  = pt.y + Math.sin(rad) * branchLen;
-    const cpx = pt.x + Math.cos(rad) * branchLen * 0.45 + side * 18;
-    const cpy = pt.y + Math.sin(rad) * branchLen * 0.45 - 22;
+    const lx  = pt.x + side * spreadX;
+    const ly  = pt.y - spreadY;
+    const cpx = pt.x + side * spreadX * 0.5;
+    const cpy = pt.y - spreadY * 0.3;
 
-    const leafRx = 46 + rnd() * 16;
-    const leafRy = 28 + rnd() * 10;
-    const thick  = Math.max(2.5, 11 - i * 0.7);
-
+    const leafRx    = 48 + rnd() * 14;
+    const leafRy    = 30 + rnd() * 10;
+    const thick     = Math.max(2.5, 11 - i * 0.7);
     const swayDur   = 3.2 + rnd() * 2.4;
     const swayDelay = rnd() * 1.8;
+    const angle     = side * (15 + rnd() * 10);
 
     return {
       trunkX: pt.x, trunkY: pt.y,
