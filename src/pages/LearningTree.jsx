@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -199,6 +199,8 @@ export default function LearningTree() {
   const { user } = useAuth();
   const [selectedNode, setSelectedNode] = useState(null);
   const [activeGenre, setActiveGenre]   = useState('all');
+  const scrollRef = useRef(null);
+  const didScroll = useRef(false); // only auto-scroll once on load
 
   const { data: nodes = [], isLoading: nodesLoading } = useQuery({
     queryKey: ['learningNodes'],
@@ -221,6 +223,39 @@ export default function LearningTree() {
   };
 
   const getNodeScore = (node) => progress.find((p) => p.node_id === node.id)?.score || 0;
+
+  // Auto-scroll to the active/current lesson on first load
+  useEffect(() => {
+    if (isLoading || didScroll.current || !scrollRef.current || filteredNodes.length === 0) return;
+    didScroll.current = true;
+
+    // Find the first non-completed node (current progress point)
+    // or scroll to bottom if no progress at all
+    let targetIndex = 0; // default: bottom (lesson 0)
+    for (let i = 0; i < filteredNodes.length; i++) {
+      const gi     = nodes.indexOf(filteredNodes[i]);
+      const status = getNodeStatus(filteredNodes[i], gi);
+      if (status === 'available' || status === 'in_progress') {
+        targetIndex = i;
+        break;
+      }
+      if (status === 'locked' && i === 0) {
+        targetIndex = 0; // no progress, go to bottom
+        break;
+      }
+    }
+
+    const slot = layout.leafSlots[targetIndex];
+    if (!slot) return;
+
+    // slot.y is SVG y from top. Convert to scroll position:
+    // scrollable content height = treeHeight, slot.y from top = slot.y
+    // We want the node centred in the viewport, offset by ~200px for header
+    const scrollTarget = slot.y - 300;
+    setTimeout(() => {
+      scrollRef.current?.scrollTo({ top: Math.max(0, scrollTarget), behavior: 'smooth' });
+    }, 400); // slight delay so tree has rendered
+  }, [isLoading, filteredNodes.length]);
 
   const handleStartLesson = (node) => {
     setSelectedNode(null);
@@ -271,7 +306,14 @@ export default function LearningTree() {
       `}</style>
 
       {/* ── Header ── */}
-      <div className="flex-shrink-0 px-5 pt-10 pb-3 max-w-lg mx-auto w-full" style={{ zIndex: 30, position: 'relative' }}>
+      <div className="flex-shrink-0 w-full"
+        style={{
+          zIndex: 30, position: 'relative',
+          backgroundColor: 'rgba(208,204,188,0.65)',
+          backdropFilter: 'blur(10px)',
+          borderBottom: '1px solid rgba(65,67,35,0.1)',
+        }}>
+        <div className="px-5 pt-10 pb-4 max-w-lg mx-auto">
         <div className="flex items-end justify-between mb-1">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-olive/40 mb-0.5">Your Reading Path</p>
@@ -297,11 +339,12 @@ export default function LearningTree() {
         </div>
 
         <GenreFilter selected={activeGenre} onSelect={setActiveGenre} />
-      </div>
+        </div> {/* end inner max-w-lg */}
+      </div> {/* end header tinted band */}
 
       {/* ── Scrollable tree canvas ── */}
-      <div className="flex-1 overflow-y-auto relative max-w-lg mx-auto w-full pb-24"
-        style={{ overscrollBehavior: 'contain' }}>
+      <div ref={scrollRef} className="flex-1 overflow-y-auto relative max-w-lg mx-auto w-full"
+        style={{ overscrollBehavior: 'contain', paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
 
         {isLoading ? (
           <div className="flex items-center justify-center h-64">
