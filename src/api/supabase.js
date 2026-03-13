@@ -133,15 +133,51 @@ export const Friendship = {
     if (error) throw error;
     return data ?? [];
   },
+  incoming: async ({ user_email }) => {
+    const { data, error } = await supabase
+      .from('friendships').select('*')
+      .eq('friend_email', user_email)
+      .eq('status', 'pending');
+    if (error) throw error;
+    return data ?? [];
+  },
+  sendRequest: async ({ user_email, friend_email }) => {
+    const { data, error } = await supabase
+      .from('friendships')
+      .insert({ user_email, friend_email, status: 'pending' })
+      .select().single();
+    if (error) throw error;
+    return data;
+  },
+  accept: async ({ id, user_email, friend_email }) => {
+    const { error: e1 } = await supabase
+      .from('friendships').update({ status: 'accepted' }).eq('id', id);
+    if (e1) throw e1;
+    const { error: e2 } = await supabase
+      .from('friendships')
+      .upsert({ user_email, friend_email: friend_email, status: 'accepted' },
+               { onConflict: 'user_email,friend_email' });
+    if (e2) throw e2;
+  },
+  decline: async (id) => {
+    const { error } = await supabase.from('friendships').delete().eq('id', id);
+    if (error) throw error;
+  },
+  cancel: async (id) => {
+    const { error } = await supabase.from('friendships').delete().eq('id', id);
+    if (error) throw error;
+  },
+  remove: async ({ user_email, friend_email }) => {
+    await supabase.from('friendships').delete()
+      .eq('user_email', user_email).eq('friend_email', friend_email);
+    await supabase.from('friendships').delete()
+      .eq('user_email', friend_email).eq('friend_email', user_email);
+  },
   create: async (payload) => {
     const { data, error } = await supabase
       .from('friendships').insert(payload).select().single();
     if (error) throw error;
     return data;
-  },
-  delete: async (id) => {
-    const { error } = await supabase.from('friendships').delete().eq('id', id);
-    if (error) throw error;
   },
 };
 
