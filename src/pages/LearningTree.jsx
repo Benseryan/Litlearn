@@ -224,39 +224,6 @@ export default function LearningTree() {
 
   const getNodeScore = (node) => progress.find((p) => p.node_id === node.id)?.score || 0;
 
-  // Auto-scroll to the active/current lesson on first load
-  useEffect(() => {
-    if (isLoading || didScroll.current || !scrollRef.current || filteredNodes.length === 0) return;
-    didScroll.current = true;
-
-    // Find the first non-completed node (current progress point)
-    // or scroll to bottom if no progress at all
-    let targetIndex = 0; // default: bottom (lesson 0)
-    for (let i = 0; i < filteredNodes.length; i++) {
-      const gi     = nodes.indexOf(filteredNodes[i]);
-      const status = getNodeStatus(filteredNodes[i], gi);
-      if (status === 'available' || status === 'in_progress') {
-        targetIndex = i;
-        break;
-      }
-      if (status === 'locked' && i === 0) {
-        targetIndex = 0; // no progress, go to bottom
-        break;
-      }
-    }
-
-    const slot = layout.leafSlots[targetIndex];
-    if (!slot) return;
-
-    // slot.y is SVG y from top. Convert to scroll position:
-    // scrollable content height = treeHeight, slot.y from top = slot.y
-    // We want the node centred in the viewport, offset by ~200px for header
-    const scrollTarget = slot.y - 300;
-    setTimeout(() => {
-      scrollRef.current?.scrollTo({ top: Math.max(0, scrollTarget), behavior: 'smooth' });
-    }, 400); // slight delay so tree has rendered
-  }, [isLoading, filteredNodes.length]);
-
   const handleStartLesson = (node) => {
     setSelectedNode(null);
     navigate(createPageUrl(`Lesson?node_id=${node.id}`));
@@ -273,6 +240,29 @@ export default function LearningTree() {
   // Compute tree height and layout from actual node count
   const treeHeight = 100 + filteredNodes.length * NODE_GAP + TREE_TOP_PAD;
   const layout     = buildTreeLayout(filteredNodes.length, treeHeight);
+
+  // Auto-scroll to current lesson on first load
+  useEffect(() => {
+    if (isLoading || didScroll.current || !scrollRef.current || filteredNodes.length === 0) return;
+    didScroll.current = true;
+
+    let targetIndex = 0;
+    for (let i = 0; i < filteredNodes.length; i++) {
+      const gi     = nodes.indexOf(filteredNodes[i]);
+      const status = getNodeStatus(filteredNodes[i], gi);
+      if (status === 'available' || status === 'in_progress') {
+        targetIndex = i;
+        break;
+      }
+    }
+
+    const slot = layout.leafSlots[targetIndex];
+    if (!slot) return;
+    const scrollTarget = slot.y - 300;
+    setTimeout(() => {
+      scrollRef.current?.scrollTo({ top: Math.max(0, scrollTarget), behavior: 'smooth' });
+    }, 400);
+  }, [isLoading, filteredNodes.length]);
 
   const firstLockedUnit = (() => {
     for (let i = 0; i < filteredNodes.length; i++) {
