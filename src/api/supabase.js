@@ -127,12 +127,14 @@ export const Achievement = {
 
 // ─── Friendship ──────────────────────────────────────────────────────────────
 export const Friendship = {
+  // All rows where I am the sender
   filter: async ({ user_email }) => {
     const { data, error } = await supabase
       .from('friendships').select('*').eq('user_email', user_email);
     if (error) throw error;
     return data ?? [];
   },
+  // Incoming requests (someone sent to me)
   incoming: async ({ user_email }) => {
     const { data, error } = await supabase
       .from('friendships').select('*')
@@ -141,6 +143,7 @@ export const Friendship = {
     if (error) throw error;
     return data ?? [];
   },
+  // Send a friend request (pending)
   sendRequest: async ({ user_email, friend_email }) => {
     const { data, error } = await supabase
       .from('friendships')
@@ -149,24 +152,30 @@ export const Friendship = {
     if (error) throw error;
     return data;
   },
+  // Accept: update both sides to accepted (create mirror row if needed)
   accept: async ({ id, user_email, friend_email }) => {
+    // Update the incoming request to accepted
     const { error: e1 } = await supabase
       .from('friendships').update({ status: 'accepted' }).eq('id', id);
     if (e1) throw e1;
+    // Create mirror row so both sides see each other
     const { error: e2 } = await supabase
       .from('friendships')
       .upsert({ user_email, friend_email: friend_email, status: 'accepted' },
                { onConflict: 'user_email,friend_email' });
     if (e2) throw e2;
   },
+  // Decline: just delete the request
   decline: async (id) => {
     const { error } = await supabase.from('friendships').delete().eq('id', id);
     if (error) throw error;
   },
+  // Cancel outgoing request
   cancel: async (id) => {
     const { error } = await supabase.from('friendships').delete().eq('id', id);
     if (error) throw error;
   },
+  // Remove accepted friend (delete both sides)
   remove: async ({ user_email, friend_email }) => {
     await supabase.from('friendships').delete()
       .eq('user_email', user_email).eq('friend_email', friend_email);
@@ -192,6 +201,29 @@ export const Profile = {
   update: async (userId, payload) => {
     const { data, error } = await supabase
       .from('profiles').update(payload).eq('id', userId).select().single();
+    if (error) throw error;
+    return data;
+  },
+};
+
+// ─── FriendStreak ─────────────────────────────────────────────────────────────
+export const FriendStreak = {
+  filter: async ({ user_email, friend_email }) => {
+    let q = supabase.from('friend_streaks').select('*').eq('user_email', user_email);
+    if (friend_email) q = q.eq('friend_email', friend_email);
+    const { data, error } = await q;
+    if (error) throw error;
+    return data ?? [];
+  },
+  create: async (payload) => {
+    const { data, error } = await supabase
+      .from('friend_streaks').insert(payload).select().single();
+    if (error) throw error;
+    return data;
+  },
+  update: async (id, payload) => {
+    const { data, error } = await supabase
+      .from('friend_streaks').update(payload).eq('id', id).select().single();
     if (error) throw error;
     return data;
   },
