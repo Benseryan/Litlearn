@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
+import { ThemeProvider } from '@/lib/ThemeContext';
 import { queryClientInstance } from '@/lib/query-client';
 import { Toaster } from '@/components/ui/toaster';
 
@@ -55,12 +56,14 @@ function AppRoutes() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClientInstance}>
+      <ThemeProvider>
       <AuthProvider>
         <BrowserRouter>
           <AppRoutes />
           <Toaster />
         </BrowserRouter>
       </AuthProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }
