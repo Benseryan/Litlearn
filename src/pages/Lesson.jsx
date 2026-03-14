@@ -4,12 +4,13 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, Loader2, X } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
-import { LearningNode, LessonContent, UserProgress, UserGoal } from '@/api/supabase';
+import { LearningNode, LessonContent, UserProgress, UserGoal, FriendStreak } from '@/api/supabase';
 import { LESSON_CONTENT } from '@/components/lesson/lessonContent';
 import LessonIntro from '@/components/lesson/LessonIntro';
 import LessonReader from '@/components/lesson/LessonReader';
 import LessonQuiz from '@/components/lesson/LessonQuiz';
 import LessonComplete from '@/components/lesson/LessonComplete';
+import StreakCelebration from '@/components/ui/StreakCelebration';
 import { createPageUrl } from '@/utils';
 
 // state machine
@@ -80,6 +81,9 @@ export default function Lesson() {
   const [phase, setPhase]     = useState(PHASE.INTRO);
   const [answers, setAnswers] = useState([]);
   const [stars, setStars]     = useState(0);
+  const [showStreakCelebration, setShowStreakCelebration] = useState(false);
+  const [celebrationStreak, setCelebrationStreak]         = useState(0);
+  const [celebrationFriend, setCelebrationFriend]         = useState(null);
 
   // Fetch node
   const { data: nodes = [], isLoading: nodesLoading } = useQuery({
@@ -137,16 +141,93 @@ export default function Lesson() {
     setStars(s);
     setPhase(PHASE.COMPLETE);
     if (!user?.email || !nodeId) return;
+
+    const today = new Date().toISOString().split('T')[0];
+    let friendStreakTriggered = false;
+
     try {
       await UserProgress.upsert({
         user_email:     user.email,
         node_id:        nodeId,
         status:         'completed',
         score:          s,
-        completed_date: new Date().toISOString().split('T')[0],
+        completed_date: today,
       });
-      await updateStreakAndGoal(user, queryClient);
+
+      // ── Update friend streaks ────────────────────────────────
+      try {
+        const myFriendStreaks = await FriendStreak.filter({ user_email: user.email });
+        for (const fs of myFriendStreaks) {
+          if (fs.status === 'broken') continue;
+          // Check if friend has been active today (their side)
+          const friendRecords = await FriendStreak.filter({
+            user_email:   fs.friend_email,
+            friend_email: user.email,
+          });
+          const friendRecord      = friendRecords?.[0];
+          const friendActiveToday = friendRecord?.last_active_date === today;
+          const newCount          = friendActiveToday ? (fs.streak_count || 0) + 1 : fs.streak_count || 0;
+          await FriendStreak.update(fs.id, {
+            last_active_date: today,
+            streak_count:     newCount,
+            status:           'active',
+          });
+          // Celebrate if both sides active today and streak just incremented
+          if (friendActiveToday && newCount > (fs.streak_count || 0) && !friendStreakTriggered) {
+            setCelebrationStreak(newCount);
+            setCelebrationFriend(fs.friend_name || fs.friend_email);
+            setShowStreakCelebration(true);
+            friendStreakTriggered = true;
+          }
+        }
+      } catch (e) {
+        console.error('Friend streak update failed:', e);
+      }
+
+      // ── Update personal goals / solo streak ──────────────────
+      const goals = await UserGoal.filter({ user_email: user.email });
+      const goal  = goals[0];
+      const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+
+      if (!goal) {
+        await UserGoal.create({
+          user_email: user.email, daily_target: 1,
+          current_streak: 1, longest_streak: 1,
+          lessons_today: 1, total_lessons: 1, last_activity_date: today,
+        });
+        if (!friendStreakTriggered) {
+          setCelebrationStreak(1); setCelebrationFriend(null); setShowStreakCelebration(true);
+        }
+      } else {
+        const isFirstToday = goal.last_activity_date !== today;
+        let newStreak    = goal.current_streak;
+        let lessonsToday = goal.lessons_today;
+
+        if (goal.last_activity_date === today) {
+          lessonsToday += 1;
+        } else if (goal.last_activity_date === yesterday) {
+          newStreak    += 1; lessonsToday = 1;
+        } else {
+          newStreak = 1; lessonsToday = 1;
+        }
+        await UserGoal.update(goal.id, {
+          current_streak:     newStreak,
+          longest_streak:     Math.max(goal.longest_streak, newStreak),
+          lessons_today:      lessonsToday,
+          total_lessons:      (goal.total_lessons || 0) + 1,
+          last_activity_date: today,
+        });
+        // Solo celebration on first lesson of the day (if no friend streak already fired)
+        if (isFirstToday && !friendStreakTriggered) {
+          setCelebrationStreak(newStreak);
+          setCelebrationFriend(null);
+          setShowStreakCelebration(true);
+        }
+      }
+
       queryClient.invalidateQueries({ queryKey: ['userProgress'] });
+      queryClient.invalidateQueries({ queryKey: ['userGoal'] });
+      queryClient.invalidateQueries({ queryKey: ['friendStreaks'] });
     } catch (e) {
       console.error('Progress save failed:', e);
     }
@@ -182,6 +263,16 @@ export default function Lesson() {
 
   return (
     <div className="min-h-screen bg-cream flex flex-col">
+      {/* Streak celebration fullscreen overlay */}
+      <AnimatePresence>
+        {showStreakCelebration && (
+          <StreakCelebration
+            streak={celebrationStreak}
+            friendName={celebrationFriend}
+            onClose={() => setShowStreakCelebration(false)}
+          />
+        )}
+      </AnimatePresence>
       {/* Header */}
       <div className="flex-shrink-0 px-5 pt-12 pb-4 max-w-lg mx-auto w-full">
         <div className="flex items-center gap-3 mb-4">
