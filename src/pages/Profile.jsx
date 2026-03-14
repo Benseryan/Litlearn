@@ -278,28 +278,135 @@ export default function ProfilePage() {
           </div>
         </motion.div>
 
-        {/* ── Completed lessons ── */}
-        {completed.length > 0 && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
-            className="rounded-2xl p-5 mb-6"
+        {/* ── Member since + achievements ── */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
+          className="space-y-4 mb-6">
+
+          {/* Member since card */}
+          <div className="rounded-2xl px-5 py-4 flex items-center gap-4"
             style={{ backgroundColor: T.cardBg }}>
-            <p className="text-[10px] font-medium uppercase tracking-wider mb-3"
-              style={{ color: T.textMuted }}>Completed Lessons</p>
-            <div className="space-y-2">
-              {completed.slice(-5).reverse().map((p) => (
-                <div key={p.id} className="flex items-center justify-between">
-                  <p className="text-xs" style={{ color: T.textPrimary }}>{p.completed_date || 'Completed'}</p>
-                  <div className="flex gap-0.5">
-                    {[1,2,3].map((s) => (
-                      <div key={s} className="w-2 h-2 rounded-full"
-                        style={{ backgroundColor: s <= (p.score || 0) ? T.textPrimary : `${T.textPrimary}25` }} />
-                    ))}
+            <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ backgroundColor: `${T.textPrimary}15` }}>
+              {/* Sprout icon */}
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
+                <path d="M12 22V12" stroke={T.textPrimary} strokeWidth="2" strokeLinecap="round"/>
+                <path d="M12 12C12 12 8 10 6 6C10 4 14 6 12 12Z" fill={T.textPrimary} opacity="0.8"/>
+                <path d="M12 12C12 12 16 10 18 6C14 4 10 6 12 12Z" fill={T.textPrimary} opacity="0.5"/>
+              </svg>
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider mb-0.5"
+                style={{ color: T.textMuted }}>Member since</p>
+              <p className="text-sm font-semibold" style={{ color: T.textPrimary }}>
+                {user?.created_at
+                  ? new Date(user.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+                  : 'Early Explorer'}
+              </p>
+            </div>
+          </div>
+
+          {/* Achievements placeholder — badges coming soon */}
+          <div className="rounded-2xl p-5" style={{ backgroundColor: T.cardBg }}>
+            <p className="text-[10px] font-semibold uppercase tracking-wider mb-4"
+              style={{ color: T.textMuted }}>Achievements</p>
+
+            {/* Earned badges based on progress */}
+            <div className="flex flex-wrap gap-3">
+              {/* First lesson badge */}
+              {completed.length >= 1 && (
+                <div className="flex flex-col items-center gap-1.5">
+                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
+                    style={{ backgroundColor: '#5A6E3520', border: '2px solid #5A6E3540' }}>
+                    <svg viewBox="0 0 32 32" width="28" height="28">
+                      <circle cx="16" cy="16" r="14" fill="#5A6E35" opacity="0.9"/>
+                      <path d="M16 6 C16 6 10 10 10 16 C10 20 13 23 16 24 C19 23 22 20 22 16 C22 10 16 6 16 6Z"
+                        fill="#ADB684"/>
+                      <circle cx="16" cy="16" r="3" fill="#F3F2EA"/>
+                    </svg>
                   </div>
+                  <p className="text-[9px] font-semibold text-center" style={{ color: T.textMuted }}>First Leaf</p>
+                </div>
+              )}
+
+              {/* 5 lessons badge */}
+              {completed.length >= 5 && (
+                <div className="flex flex-col items-center gap-1.5">
+                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
+                    style={{ backgroundColor: '#7A5C3020', border: '2px solid #7A5C3040' }}>
+                    <svg viewBox="0 0 32 32" width="28" height="28">
+                      <circle cx="16" cy="16" r="14" fill="#7A5C30" opacity="0.9"/>
+                      {[0,72,144,216,288].map((a,i) => {
+                        const r2 = (a-90)*Math.PI/180;
+                        return <circle key={i} cx={16+Math.cos(r2)*8} cy={16+Math.sin(r2)*8} r="3" fill="#C8A06A"/>;
+                      })}
+                      <circle cx="16" cy="16" r="4" fill="#F3F2EA"/>
+                    </svg>
+                  </div>
+                  <p className="text-[9px] font-semibold text-center" style={{ color: T.textMuted }}>Bookworm</p>
+                </div>
+              )}
+
+              {/* 3-day streak badge */}
+              {(goal?.current_streak || 0) >= 3 && (
+                <div className="flex flex-col items-center gap-1.5">
+                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
+                    style={{ backgroundColor: '#B4530920', border: '2px solid #B4530940' }}>
+                    <svg viewBox="0 0 32 32" width="28" height="28">
+                      <circle cx="16" cy="16" r="14" fill="#B45309" opacity="0.9"/>
+                      <path d="M16 6 C18 10 22 12 20 18 C18 22 14 23 12 20 C14 20 15 18 14 16 C13 14 11 14 11 14 C11 10 14 7 16 6Z"
+                        fill="#FFD080"/>
+                      <path d="M16 14 C17 16 16 19 15 20 C14 19 13.5 17 14 16 C14 14 16 14 16 14Z"
+                        fill="#FF8040"/>
+                    </svg>
+                  </div>
+                  <p className="text-[9px] font-semibold text-center" style={{ color: T.textMuted }}>On Fire</p>
+                </div>
+              )}
+
+              {/* Perfect score badge */}
+              {progress.some((p) => p.score === 3) && (
+                <div className="flex flex-col items-center gap-1.5">
+                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
+                    style={{ backgroundColor: '#3A605820', border: '2px solid #3A605840' }}>
+                    <svg viewBox="0 0 32 32" width="28" height="28">
+                      <circle cx="16" cy="16" r="14" fill="#3A6058" opacity="0.9"/>
+                      {[0,1,2].map((i) => (
+                        <polygon key={i}
+                          points={`${16+Math.cos((-90+i*120)*Math.PI/180)*9},${16+Math.sin((-90+i*120)*Math.PI/180)*9} ${16+Math.cos((-30+i*120)*Math.PI/180)*5},${16+Math.sin((-30+i*120)*Math.PI/180)*5} ${16+Math.cos((30+i*120)*Math.PI/180)*9},${16+Math.sin((30+i*120)*Math.PI/180)*9}`}
+                          fill="#7ABFB4" opacity="0.9"/>
+                      ))}
+                      <circle cx="16" cy="16" r="3.5" fill="#F3F2EA"/>
+                    </svg>
+                  </div>
+                  <p className="text-[9px] font-semibold text-center" style={{ color: T.textMuted }}>Scholar</p>
+                </div>
+              )}
+
+              {/* Locked placeholder slots */}
+              {Array.from({ length: Math.max(0, 4 - [
+                completed.length >= 1,
+                completed.length >= 5,
+                (goal?.current_streak || 0) >= 3,
+                progress.some((p) => p.score === 3),
+              ].filter(Boolean).length) }, (_, i) => (
+                <div key={`lock-${i}`} className="flex flex-col items-center gap-1.5">
+                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
+                    style={{ backgroundColor: `${T.textPrimary}08`, border: `2px dashed ${T.textPrimary}18` }}>
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none">
+                      <rect x="5" y="11" width="14" height="10" rx="2" stroke={T.textPrimary} strokeWidth="1.5" opacity="0.3"/>
+                      <path d="M8 11V7a4 4 0 018 0v4" stroke={T.textPrimary} strokeWidth="1.5" opacity="0.3"/>
+                    </svg>
+                  </div>
+                  <p className="text-[9px] font-semibold text-center" style={{ color: `${T.textMuted}70` }}>Locked</p>
                 </div>
               ))}
             </div>
-          </motion.div>
-        )}
+
+            <p className="text-[10px] mt-4" style={{ color: `${T.textMuted}80` }}>
+              More badges coming soon ✦
+            </p>
+          </div>
+        </motion.div>
 
         {/* ── Sign out ── */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
