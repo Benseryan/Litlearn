@@ -234,8 +234,11 @@ export default function LearningTree() {
   };
 
   const isLoading      = nodesLoading || progressLoading;
-  const completedCount = progress.filter((p) => p.status === 'completed').length;
   const filteredNodes  = activeGenre === 'all' ? nodes : nodes.filter((n) => n.genre === activeGenre);
+  // Only count completed nodes that actually exist in the node list (avoids orphaned progress rows)
+  const completedCount = nodes.filter((n) =>
+    progress.find((p) => p.node_id === n.id && p.status === 'completed')
+  ).length;
   const genreConfig    = getGenre(activeGenre);
 
   const UNIT_NAMES = ['Foundations', 'Classical World', 'Modern Era', 'Advanced Study'];
@@ -337,8 +340,7 @@ export default function LearningTree() {
           <div className="text-right">
             <p className="text-2xl font-bold leading-none" style={{ color: T.textPrimary }}>{completedCount}</p>
             <p className="text-[10px] mt-0.5" style={{ color: T.textMuted }}>of {nodes.length} done</p>
-          </div>
-        </div>
+          </div>        </div>
         <p className="text-xs mb-3 leading-relaxed" style={{ color: T.textMuted }}>
           Each leaf holds a lesson. Start at the roots — complete one to unlock the next.
         </p>
