@@ -234,8 +234,24 @@ export default function LearningTree() {
   const filteredNodes  = activeGenre === 'all' ? nodes : nodes.filter((n) => n.genre === activeGenre);
   const genreConfig    = getGenre(activeGenre);
 
-  const UNIT_SIZE  = 5;
   const UNIT_NAMES = ['Foundations', 'Classical World', 'Modern Era', 'Advanced Study'];
+
+  // Group nodes by their unit field (set by admin) — dynamic, any size
+  // Build a map: unitNumber → array of node indices in filteredNodes
+  const unitGroups = filteredNodes.reduce((acc, node, index) => {
+    const u = node.unit || 1;
+    if (!acc[u]) acc[u] = [];
+    acc[u].push(index);
+    return acc;
+  }, {});
+  // Sorted unit numbers
+  const unitNumbers = Object.keys(unitGroups).map(Number).sort((a, b) => a - b);
+
+  // For each node, find what unit it belongs to and its position within that unit
+  const getNodeUnit = (index) => {
+    const node = filteredNodes[index];
+    return node?.unit || 1;
+  };
 
   // Compute tree height and layout from actual node count
   const treeHeight = 100 + filteredNodes.length * NODE_GAP + TREE_TOP_PAD;
@@ -268,16 +284,16 @@ export default function LearningTree() {
     for (let i = 0; i < filteredNodes.length; i++) {
       const gi = nodes.indexOf(filteredNodes[i]);
       if (getNodeStatus(filteredNodes[i], gi) === 'locked') {
-        // Unit is locked only if the very first node of that unit is locked
-        const unitStart = Math.floor(i / UNIT_SIZE) * UNIT_SIZE;
-        const firstNodeOfUnit = filteredNodes[unitStart];
-        const firstGi = nodes.indexOf(firstNodeOfUnit);
-        if (firstNodeOfUnit && getNodeStatus(firstNodeOfUnit, firstGi) === 'locked') {
-          return unitStart;
+        const thisUnit = filteredNodes[i]?.unit || 1;
+        // Unit is locked only if the first node of that unit is locked
+        const firstInUnit = filteredNodes.find((n) => (n.unit || 1) === thisUnit);
+        const firstInUnitGi = nodes.indexOf(firstInUnit);
+        if (firstInUnit && getNodeStatus(firstInUnit, firstInUnitGi) === 'locked') {
+          return thisUnit;
         }
       }
     }
-    return filteredNodes.length;
+    return Infinity; // all units unlocked
   })();
 
   const selectedStatus = selectedNode
@@ -333,7 +349,7 @@ export default function LearningTree() {
       </div> {/* end header tinted band */}
 
       {/* ── Scrollable tree canvas ── */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto relative max-w-lg mx-auto w-full"
+      <div ref={scrollRef} className="flex-1 overflow-y-auto relative max-w-lg mx-auto w-full no-scrollbar"
         style={{ overscrollBehavior: 'contain', paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
 
         {isLoading ? (
@@ -351,7 +367,8 @@ export default function LearningTree() {
               const gi        = nodes.indexOf(node);
               const slot      = layout.leafSlots[index];
               if (!slot) return null;
-              const unitIndex = Math.floor(index / UNIT_SIZE);
+              const unitNum   = node.unit || 1;
+              const unitIndex = unitNumbers.indexOf(unitNum);
               const unitColor = UNIT_COLORS[unitIndex % UNIT_COLORS.length];
               return (
                 <LessonNode key={node.id} node={node}
@@ -363,19 +380,17 @@ export default function LearningTree() {
               );
             })}
 
-            {/* Unit banners — divider sitting just below first node of each unit */}
-            {filteredNodes.map((node, index) => {
-              if (index % UNIT_SIZE !== 0) return null;
-              const slot      = layout.leafSlots[index];
+            {/* Unit banners — one per unit, placed before the first node of that unit */}
+            {unitNumbers.map((unitNum) => {
+              const firstIndexInUnit = unitGroups[unitNum][0];
+              const slot = layout.leafSlots[firstIndexInUnit];
               if (!slot) return null;
-              const unitIndex  = Math.floor(index / UNIT_SIZE);
-              const unitName   = UNIT_NAMES[unitIndex] || `Unit ${unitIndex + 1}`;
-              const unitLocked = index >= firstLockedUnit;
-              // Convert SVG y to bottom-offset: SVG y=0 is top, bottom offset = treeHeight - svgY
-              // Place banner 100px below the first node of this unit
+              const unitIndex  = unitNumbers.indexOf(unitNum);
+              const unitName   = UNIT_NAMES[unitIndex] || `Unit ${unitNum}`;
+              const unitLocked = unitNum >= firstLockedUnit;
               const bannerBottom = treeHeight - slot.y - 110;
               return (
-                <UnitBanner key={`unit-${index}`}
+                <UnitBanner key={`unit-${unitNum}`}
                   label={unitName} unitIndex={unitIndex}
                   isLocked={unitLocked} bottomPx={bannerBottom} />
               );
