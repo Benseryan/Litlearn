@@ -228,3 +228,15 @@ export const FriendStreak = {
     return data;
   },
 };
+
+// ─── Avatar upload (Supabase Storage) ────────────────────────────────────────
+export const AvatarStorage = {
+  upload: async (userId, file) => {
+    const ext  = file.name.split('.').pop();
+    const path = `avatars/${userId}.${ext}`;
+    const { error } = await supabase.storage.from('avatars').upload(path, file, { upsert: true });
+    if (error) throw error;
+    const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+    return data.publicUrl;
+  },
+};
