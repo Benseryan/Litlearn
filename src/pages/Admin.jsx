@@ -17,7 +17,9 @@ const CATEGORIES = ['foundations','classical','modern','analysis','poetry'];
 const GENRES     = ['classics','fantasy','sci-fi','philosophy','nonfiction','mystery'];
 const ICONS      = ['book-open','layers','feather','landmark','crown','sparkles','flower-2','mic','book-marked','globe'];
 
-const EMPTY_NODE = { title: '', description: '', order: 1, icon: 'book-open', category: 'foundations', genre: 'classics' };
+const EMPTY_NODE = { title: '', description: '', order: 1, icon: 'book-open', category: 'foundations', genre: 'classics', unit: 1 };
+
+const UNIT_NAMES = ['Foundations', 'Classical World', 'Modern Era', 'Advanced Study'];
 const EMPTY_SLIDE    = { title: '', text: '', isPoem: false };
 const EMPTY_QUESTION = { type: 'comprehension', text: '', options: ['','','',''], correct_index: 0, explanation: '' };
 
@@ -402,8 +404,12 @@ function NodeRow({ node, content, onEdit, onEditContent, onDelete, index }) {
         {/* Info */}
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-olive-dark truncate">{node.title}</p>
-          <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-[10px] text-olive/50 capitalize">{node.genre} · {node.category}</span>
+          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+              style={{ backgroundColor: 'rgba(65,67,35,0.1)', color: '#414323' }}>
+              Unit {node.unit || 1}
+            </span>
+            <span className="text-[10px] text-olive/50 capitalize">{node.genre}</span>
             {hasContent && (
               <span className="text-[10px] text-olive-dark bg-sage/40 px-1.5 py-0.5 rounded-full font-medium">
                 {slideCount}s · {quizCount}q
@@ -411,7 +417,7 @@ function NodeRow({ node, content, onEdit, onEditContent, onDelete, index }) {
             )}
             {!hasContent && (
               <span className="text-[10px] text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded-full font-medium">
-                static fallback
+                static
               </span>
             )}
           </div>
@@ -439,13 +445,18 @@ function NodeRow({ node, content, onEdit, onEditContent, onDelete, index }) {
 }
 
 // ─── Node form (modal-style inline panel) ────────────────────
-function NodeForm({ node, onSave, onCancel, isSaving }) {
+function NodeForm({ node, onSave, onCancel, isSaving, existingNodes }) {
   const [form, setForm] = useState(
     node
       ? { title: node.title, description: node.description || '', order: node.order,
-          icon: node.icon || 'book-open', category: node.category || 'foundations', genre: node.genre || 'classics' }
+          icon: node.icon || 'book-open', category: node.category || 'foundations',
+          genre: node.genre || 'classics', unit: node.unit || 1 }
       : { ...EMPTY_NODE }
   );
+
+  // Derive how many units exist from existing nodes
+  const maxUnit = Math.max(1, ...existingNodes.map((n) => n.unit || 1));
+  const unitOptions = Array.from({ length: maxUnit + 1 }, (_, i) => i + 1);
 
   return (
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
@@ -468,9 +479,41 @@ function NodeForm({ node, onSave, onCancel, isSaving }) {
         <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
           placeholder="Brief description shown on hover" className={inp} />
       </div>
+
+      {/* Unit / Section picker */}
+      <div>
+        <p className={label}>Section / Unit</p>
+        <div className="flex flex-wrap gap-2">
+          {unitOptions.map((u) => (
+            <button key={u} onClick={() => setForm({ ...form, unit: u })}
+              className="flex flex-col items-center px-3 py-2 rounded-xl text-xs font-semibold transition-all"
+              style={{
+                backgroundColor: form.unit === u ? '#414323' : 'rgba(65,67,35,0.07)',
+                color: form.unit === u ? '#F3F2EA' : '#414323',
+                boxShadow: form.unit === u ? '0 2px 0 #252611' : 'none',
+              }}>
+              <span className="font-bold">Unit {u}</span>
+              <span className="text-[9px] mt-0.5 opacity-70">
+                {UNIT_NAMES[u - 1] || `Section ${u}`}
+              </span>
+            </button>
+          ))}
+          {/* New unit button */}
+          <button onClick={() => setForm({ ...form, unit: maxUnit + 1 })}
+            className="flex flex-col items-center px-3 py-2 rounded-xl text-xs font-semibold border-2 border-dashed transition-all"
+            style={{
+              borderColor: form.unit === maxUnit + 1 ? '#414323' : 'rgba(65,67,35,0.2)',
+              color: 'rgba(65,67,35,0.5)',
+            }}>
+            <span>+ New</span>
+            <span className="text-[9px] mt-0.5">Unit {maxUnit + 1}</span>
+          </button>
+        </div>
+      </div>
+
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <p className={label}>Order #</p>
+          <p className={label}>Order # within unit</p>
           <input type="number" min="1" value={form.order}
             onChange={(e) => setForm({ ...form, order: parseInt(e.target.value) || 1 })} className={inp} />
         </div>
@@ -608,6 +651,7 @@ export default function Admin() {
                 onSave={(form) => saveMut.mutate(form)}
                 onCancel={() => { setShowForm(false); setEditingNode(null); }}
                 isSaving={saveMut.isPending}
+                existingNodes={nodes}
               />
             </motion.div>
           )}
