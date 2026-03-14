@@ -241,7 +241,18 @@ export default function LearningTree() {
   ).length;
   const genreConfig    = getGenre(activeGenre);
 
-  const UNIT_NAMES = ['Foundations', 'Classical World', 'Modern Era', 'Advanced Study'];
+  const UNIT_NAMES_FALLBACK = ['Foundations', 'Classical World', 'Modern Era', 'Advanced Study'];
+
+  // Build unit name map from actual node data (admin-defined names)
+  const unitNameMap = filteredNodes.reduce((acc, node) => {
+    if (node.unit && node.unit_name && !acc[node.unit]) {
+      acc[node.unit] = node.unit_name;
+    }
+    return acc;
+  }, {});
+
+  const getUnitName = (unitNum, unitIndex) =>
+    unitNameMap[unitNum] || UNIT_NAMES_FALLBACK[unitIndex] || `Unit ${unitNum}`;
 
   // Group nodes by their unit field (set by admin) — dynamic, any size
   // Build a map: unitNumber → array of node indices in filteredNodes
@@ -400,7 +411,7 @@ export default function LearningTree() {
               const slot = layout.leafSlots[firstIndexInUnit];
               if (!slot) return null;
               const unitIndex  = unitNumbers.indexOf(unitNum);
-              const unitName   = UNIT_NAMES[unitIndex] || `Unit ${unitNum}`;
+              const unitName   = getUnitName(unitNum, unitIndex);
               const unitLocked = unitNum >= firstLockedUnit;
               const bannerBottom = treeHeight - slot.y - 110;
               return (
