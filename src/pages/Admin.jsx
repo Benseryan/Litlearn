@@ -387,9 +387,10 @@ function ContentEditor({ node, existingContent, onBack, onSaved }) {
 
 // ─── Node list item ───────────────────────────────────────────
 function NodeRow({ node, content, onEdit, onEditContent, onDelete, index }) {
-  const hasContent = !!content;
-  const slideCount = hasContent ? JSON.parse(content.slides_json || '[]').length : 0;
-  const quizCount  = hasContent ? JSON.parse(content.questions_json || '[]').length : 0;
+  const hasContent     = !!content;
+  const slideCount     = hasContent ? JSON.parse(content.slides_json || '[]').length : 0;
+  const quizCount      = hasContent ? JSON.parse(content.questions_json || '[]').length : 0;
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
@@ -425,19 +426,40 @@ function NodeRow({ node, content, onEdit, onEditContent, onDelete, index }) {
 
         {/* Actions */}
         <div className="flex items-center gap-1 flex-shrink-0">
-          <button onClick={() => onEditContent(node)}
-            className="flex items-center gap-1 px-2.5 h-8 bg-olive-dark text-text_light rounded-full text-[11px] font-semibold hover:bg-olive transition-colors"
-            style={{ boxShadow: '0 2px 0 #252611' }}>
-            <Layers className="w-3 h-3" /> Content
-          </button>
-          <button onClick={() => onEdit(node)}
-            className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-neutral_tone/50 transition-colors">
-            <Pencil className="w-3.5 h-3.5 text-olive/60" />
-          </button>
-          <button onClick={() => onDelete(node.id)}
-            className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-red-50 transition-colors">
-            <Trash2 className="w-3.5 h-3.5 text-red-400" />
-          </button>
+          {!confirmDelete ? (
+            <>
+              <button onClick={() => onEditContent(node)}
+                className="flex items-center gap-1 px-2.5 h-8 bg-olive-dark text-text_light rounded-full text-[11px] font-semibold hover:bg-olive transition-colors"
+                style={{ boxShadow: '0 2px 0 #252611' }}>
+                <Layers className="w-3 h-3" /> Content
+              </button>
+              <button onClick={() => onEdit(node)}
+                className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-neutral_tone/50 transition-colors">
+                <Pencil className="w-3.5 h-3.5 text-olive/60" />
+              </button>
+              <button onClick={() => setConfirmDelete(true)}
+                className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-red-50 transition-colors">
+                <Trash2 className="w-3.5 h-3.5 text-red-400" />
+              </button>
+            </>
+          ) : (
+            // Confirm delete — replaces normal actions
+            <AnimatePresence>
+              <motion.div key="confirm" initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
+                className="flex items-center gap-1.5">
+                <span className="text-[11px] text-red-500 font-medium">Delete?</span>
+                <button onClick={() => { onDelete(node.id); setConfirmDelete(false); }}
+                  className="flex items-center gap-1 px-2.5 h-7 bg-red-500 text-white rounded-full text-[11px] font-semibold hover:bg-red-600 transition-colors">
+                  Yes
+                </button>
+                <button onClick={() => setConfirmDelete(false)}
+                  className="flex items-center gap-1 px-2.5 h-7 bg-neutral_tone/40 text-olive-dark rounded-full text-[11px] font-semibold hover:bg-neutral_tone/60 transition-colors">
+                  Cancel
+                </button>
+              </motion.div>
+            </AnimatePresence>
+          )}
         </div>
       </div>
     </motion.div>
