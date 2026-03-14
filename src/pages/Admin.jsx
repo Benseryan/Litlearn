@@ -17,7 +17,7 @@ const CATEGORIES = ['foundations','classical','modern','analysis','poetry'];
 const GENRES     = ['classics','fantasy','sci-fi','philosophy','nonfiction','mystery'];
 const ICONS      = ['book-open','layers','feather','landmark','crown','sparkles','flower-2','mic','book-marked','globe'];
 
-const EMPTY_NODE = { title: '', description: '', order: 1, icon: 'book-open', category: 'foundations', genre: 'classics', unit: 1 };
+const EMPTY_NODE = { title: '', description: '', order: 1, icon: 'book-open', category: 'foundations', genre: 'classics', unit: 1, unit_name: '' };
 
 const UNIT_NAMES = ['Foundations', 'Classical World', 'Modern Era', 'Advanced Study'];
 const EMPTY_SLIDE    = { title: '', text: '', isPoem: false };
@@ -472,13 +472,23 @@ function NodeForm({ node, onSave, onCancel, isSaving, existingNodes }) {
     node
       ? { title: node.title, description: node.description || '', order: node.order,
           icon: node.icon || 'book-open', category: node.category || 'foundations',
-          genre: node.genre || 'classics', unit: node.unit || 1 }
+          genre: node.genre || 'classics', unit: node.unit || 1, unit_name: node.unit_name || '' }
       : { ...EMPTY_NODE }
   );
 
-  // Derive how many units exist from existing nodes
-  const maxUnit = Math.max(1, ...existingNodes.map((n) => n.unit || 1));
-  const unitOptions = Array.from({ length: maxUnit + 1 }, (_, i) => i + 1);
+  // Only show units that actually have nodes already assigned
+  const existingUnitNumbers = [...new Set(existingNodes.map((n) => n.unit || 1))].sort((a, b) => a - b);
+  const maxExistingUnit     = existingUnitNumbers.length > 0 ? Math.max(...existingUnitNumbers) : 0;
+  const nextUnitNum         = maxExistingUnit + 1;
+
+  // Build a name map from existing nodes: unit# → unit_name
+  const existingUnitNames = existingNodes.reduce((acc, n) => {
+    if (n.unit && n.unit_name) acc[n.unit] = n.unit_name;
+    return acc;
+  }, {});
+
+  // If form.unit is a brand new unit, show name input
+  const isNewUnit = !existingUnitNumbers.includes(form.unit);
 
   return (
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
@@ -505,9 +515,10 @@ function NodeForm({ node, onSave, onCancel, isSaving, existingNodes }) {
       {/* Unit / Section picker */}
       <div>
         <p className={label}>Section / Unit</p>
-        <div className="flex flex-wrap gap-2">
-          {unitOptions.map((u) => (
-            <button key={u} onClick={() => setForm({ ...form, unit: u })}
+        <div className="flex flex-wrap gap-2 mb-2">
+          {/* Existing units */}
+          {existingUnitNumbers.map((u) => (
+            <button key={u} onClick={() => setForm({ ...form, unit: u, unit_name: existingUnitNames[u] || '' })}
               className="flex flex-col items-center px-3 py-2 rounded-xl text-xs font-semibold transition-all"
               style={{
                 backgroundColor: form.unit === u ? '#414323' : 'rgba(65,67,35,0.07)',
@@ -516,21 +527,38 @@ function NodeForm({ node, onSave, onCancel, isSaving, existingNodes }) {
               }}>
               <span className="font-bold">Unit {u}</span>
               <span className="text-[9px] mt-0.5 opacity-70">
-                {UNIT_NAMES[u - 1] || `Section ${u}`}
+                {existingUnitNames[u] || UNIT_NAMES[u - 1] || `Section ${u}`}
               </span>
             </button>
           ))}
-          {/* New unit button */}
-          <button onClick={() => setForm({ ...form, unit: maxUnit + 1 })}
+          {/* New unit button — always one beyond current max */}
+          <button onClick={() => setForm({ ...form, unit: nextUnitNum, unit_name: '' })}
             className="flex flex-col items-center px-3 py-2 rounded-xl text-xs font-semibold border-2 border-dashed transition-all"
             style={{
-              borderColor: form.unit === maxUnit + 1 ? '#414323' : 'rgba(65,67,35,0.2)',
-              color: 'rgba(65,67,35,0.5)',
+              borderColor: form.unit === nextUnitNum ? '#414323' : 'rgba(65,67,35,0.25)',
+              backgroundColor: form.unit === nextUnitNum ? 'rgba(65,67,35,0.08)' : 'transparent',
+              color: form.unit === nextUnitNum ? '#414323' : 'rgba(65,67,35,0.45)',
             }}>
-            <span>+ New</span>
-            <span className="text-[9px] mt-0.5">Unit {maxUnit + 1}</span>
+            <span className="font-bold">+ New</span>
+            <span className="text-[9px] mt-0.5">Unit {nextUnitNum}</span>
           </button>
         </div>
+
+        {/* Unit name input — shown when creating a new unit OR editing existing unit name */}
+        <AnimatePresence>
+          {(isNewUnit || form.unit > 0) && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+              <input
+                value={form.unit_name || ''}
+                onChange={(e) => setForm({ ...form, unit_name: e.target.value })}
+                placeholder={isNewUnit
+                  ? `Name this unit (e.g. "Classical World")`
+                  : `Rename Unit ${form.unit} (leave blank to keep current)`}
+                className={inp} />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
