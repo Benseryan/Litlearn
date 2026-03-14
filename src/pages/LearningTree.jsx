@@ -11,8 +11,10 @@ import { LearningNode, UserProgress } from '@/api/supabase';
 import { createPageUrl } from '@/utils';
 import GenreFilter from '@/components/tree/GenreFilter';
 import TreeBackground from '@/components/tree/TreeBackground';
+import TreeBackgroundNight from '@/components/tree/TreeBackgroundNight';
 import { buildTreeLayout, NODE_GAP, W } from '@/components/tree/treeLayout';
 import { getGenre } from '@/components/tree/genreConfig';
+import { useTheme, THEMES } from '@/lib/ThemeContext';
 import BottomNav from '@/components/navigation/BottomNav';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import DuoButton from '@/components/ui/DuoButton';
@@ -197,6 +199,8 @@ function UnitBanner({ label, unitIndex, isLocked, bottomPx }) {
 export default function LearningTree() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { theme } = useTheme();
+  const T = THEMES[theme];
   const [selectedNode, setSelectedNode] = useState(null);
   const [activeGenre, setActiveGenre]   = useState('all');
   const scrollRef = useRef(null);
@@ -301,7 +305,8 @@ export default function LearningTree() {
     : null;
 
   return (
-    <div className="flex flex-col h-screen max-h-screen overflow-hidden" style={{ backgroundColor: '#EAE7DA' }}>
+    <div className="flex flex-col h-screen max-h-screen overflow-hidden"
+      style={{ backgroundColor: T.bg, transition: 'background-color 0.6s ease' }}>
 
       {/* Inline keyframe for the node sway — mirrors the SVG leaf sway */}
       <style>{`
@@ -315,22 +320,26 @@ export default function LearningTree() {
       <div className="flex-shrink-0 w-full"
         style={{
           zIndex: 30, position: 'relative',
-          backgroundColor: 'rgba(208,204,188,0.65)',
+          backgroundColor: T.headerBg,
           backdropFilter: 'blur(10px)',
-          borderBottom: '1px solid rgba(65,67,35,0.1)',
+          borderBottom: `1px solid ${T.textPrimary}15`,
+          transition: 'background-color 0.6s ease',
         }}>
         <div className="px-5 pt-10 pb-4 max-w-lg mx-auto">
         <div className="flex items-end justify-between mb-1">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-olive/40 mb-0.5">Your Reading Path</p>
-            <h1 className="text-2xl font-semibold text-olive-dark leading-tight">Climb the Tree</h1>
+            <p className="text-[10px] font-bold uppercase tracking-widest mb-0.5"
+              style={{ color: T.textMuted }}>Your Reading Path</p>
+            <h1 className="text-2xl font-semibold leading-tight" style={{ color: T.textPrimary }}>
+              Climb the Tree
+            </h1>
           </div>
           <div className="text-right">
-            <p className="text-2xl font-bold text-olive-dark leading-none">{completedCount}</p>
-            <p className="text-[10px] text-olive/50 mt-0.5">of {nodes.length} done</p>
+            <p className="text-2xl font-bold leading-none" style={{ color: T.textPrimary }}>{completedCount}</p>
+            <p className="text-[10px] mt-0.5" style={{ color: T.textMuted }}>of {nodes.length} done</p>
           </div>
         </div>
-        <p className="text-xs text-olive/55 mb-3 leading-relaxed">
+        <p className="text-xs mb-3 leading-relaxed" style={{ color: T.textMuted }}>
           Each leaf holds a lesson. Start at the roots — complete one to unlock the next.
         </p>
 
@@ -359,8 +368,11 @@ export default function LearningTree() {
         ) : (
           <div className="relative w-full" style={{ height: treeHeight }}>
 
-            {/* SVG tree — leaves drawn at computed slot positions */}
-            <TreeBackground totalHeight={treeHeight} nodeCount={filteredNodes.length} />
+            {/* SVG tree — day or night based on theme */}
+            {theme === 'night'
+              ? <TreeBackgroundNight totalHeight={treeHeight} nodeCount={filteredNodes.length} />
+              : <TreeBackground      totalHeight={treeHeight} nodeCount={filteredNodes.length} />
+            }
 
             {/* Lesson nodes — each positioned at its leaf's SVG centre */}
             {filteredNodes.map((node, index) => {
