@@ -3,16 +3,31 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Target, Handshake, TreePine, BookOpen, User } from 'lucide-react';
 import { motion } from 'framer-motion';
-
-const tabs = [
-  { name: 'Goals',   icon: Target,    page: 'Goals' },
-  { name: 'Friends', icon: Handshake, page: 'Friends' },
-  { name: 'Learn',   icon: TreePine,  page: 'LearningTree' },
-  { name: 'Achieve', icon: BookOpen,  page: 'Achievements' },
-  { name: 'Profile', icon: User,      page: 'Profile' },
-];
+import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '@/lib/AuthContext';
+import { Friendship } from '@/api/supabase';
 
 export default function BottomNav({ currentPage }) {
+  const { user } = useAuth();
+
+  // Live badge: count incoming friend requests
+  const { data: incoming = [] } = useQuery({
+    queryKey: ['friendsIncoming', user?.email],
+    queryFn: () => Friendship.incoming({ user_email: user.email }),
+    enabled: !!user?.email,
+    refetchInterval: 20000,
+    staleTime: 10000,
+  });
+  const requestCount = incoming.length;
+
+  const tabs = [
+    { name: 'Goals',   icon: Target,    page: 'Goals' },
+    { name: 'Friends', icon: Handshake, page: 'Friends', badge: requestCount },
+    { name: 'Learn',   icon: TreePine,  page: 'LearningTree', center: true },
+    { name: 'Achieve', icon: BookOpen,  page: 'Achievements' },
+    { name: 'Profile', icon: User,      page: 'Profile' },
+  ];
+
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center px-4"
       style={{ paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom))' }}>
@@ -33,6 +48,13 @@ export default function BottomNav({ currentPage }) {
                 strokeWidth={isActive ? 2.2 : 1.8} />
               {!isActive && (
                 <span className="relative z-10 text-[10px] mt-0.5 text-olive-dark font-medium">{tab.name}</span>
+              )}
+              {/* Notification badge */}
+              {tab.badge > 0 && !isActive && (
+                <span className="absolute top-1 right-1 z-20 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center"
+                  style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.25)' }}>
+                  {tab.badge > 9 ? '9+' : tab.badge}
+                </span>
               )}
             </Link>
           );
